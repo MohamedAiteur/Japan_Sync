@@ -225,6 +225,61 @@
             z-index: 5;
         }
 
+        .delete-btn-round {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #f2f2f2;
+            border: none;
+            color: #9a9a9a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            cursor: pointer;
+            z-index: 5;
+            transition: background-color 0.15s, color 0.15s;
+        }
+
+        .delete-btn-round:active {
+            background-color: #fcebeb;
+            color: var(--accent);
+        }
+
+        .activity-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: #f7f7f7;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        .activity-time {
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: var(--accent-green);
+            min-width: 48px;
+        }
+
+        .activity-text {
+            flex-grow: 1;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .activity-remove {
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
         .flight-route {
             display: flex;
             justify-content: space-between;
@@ -874,16 +929,6 @@
         </div>
         <div class="content-container">
             <div id="infos-list"></div>
-
-            <div class="sync-buttons-container">
-                <button class="btn-sync export" onclick="exportData()">
-                    <i class="fa-solid fa-file-export"></i> Exporter mes données
-                </button>
-                <button class="btn-sync" onclick="document.getElementById('import-input').click()">
-                    <i class="fa-solid fa-file-import"></i> Importer des données
-                </button>
-                <input type="file" id="import-input" style="display:none;" onchange="importData(event)">
-            </div>
         </div>
         <button class="btn-add-float" onclick="openModal('modal-infos')"><i class="fa-solid fa-plus"></i></button>
     </div>
@@ -1057,7 +1102,21 @@
         </div>
     </div>
 
-    <!-- ================= MODAL PROGRAMME ================= -->
+    <!-- ================= MODAL APERÇU ITINÉRAIRE (VISUALISATION) ================= -->
+    <div class="modal" id="modal-view-programme">
+        <div class="modal-content">
+            <h3 id="view-prog-title">Étape du voyage</h3>
+            <div id="view-prog-details">
+                <!-- Rempli dynamiquement -->
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-view-programme')">Fermer</button>
+                <button class="btn-modal save" id="btn-trigger-edit-prog" style="background-color: var(--accent-green); color: white;">Modifier</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL PROGRAMME (ÉDITION) ================= -->
     <div class="modal" id="modal-programme">
         <div class="modal-content">
             <h3 id="prog-modal-title">Ajouter un itinéraire</h3>
@@ -1074,15 +1133,23 @@
             <div class="input-group">
                 <label>Date</label>
                 <input type="text" id="prog-date" placeholder="Ex: 3 sept.">
-                
-                <!-- Planning et Maps -->
-    <label style="display:block; margin-top:15px;">Planning de la journée :</label>
-    <textarea id="prog-details" rows="4" style="width:100%; margin-bottom:10px;"></textarea>
-
-    <label style="display:block;">Lien Google Maps :</label>
-    <input type="text" id="prog-maps" placeholder="https://..." style="width:100%; margin-bottom:15px;">
-                
             </div>
+
+            <div class="input-group">
+                <label>Activités de la journée</label>
+                <div id="prog-activites-list"></div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <input type="text" id="prog-activite-heure" placeholder="Heure (ex: 08h00)" style="flex:1;">
+                    <input type="text" id="prog-activite-texte" placeholder="Ex: Restaurant" style="flex:2;">
+                    <button type="button" onclick="addActiviteTemp()" style="flex:0 0 auto; border:none; background-color: var(--accent-green); color:white; border-radius:10px; padding:0 16px; font-size:1.2rem; cursor:pointer;">+</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Lien Google Maps</label>
+                <input type="text" id="prog-maps" placeholder="https://...">
+            </div>
+
             <div class="modal-buttons">
                 <button class="btn-modal cancel" onclick="closeModal('modal-programme')">Annuler</button>
                 <button class="btn-modal save" onclick="saveProgramme()">Enregistrer</button>
@@ -1510,14 +1577,48 @@
         }
 
 // --- PROGRAMME ---
+        let tempActivites = [];
+
+        function renderActivitesTempList() {
+            const container = document.getElementById('prog-activites-list');
+            container.innerHTML = '';
+            tempActivites.forEach((act, i) => {
+                container.innerHTML += `
+                    <div class="activity-row">
+                        <span class="activity-time">${act.heure}</span>
+                        <span class="activity-text">${act.texte}</span>
+                        <button type="button" class="activity-remove" onclick="removeActiviteTemp(${i})"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `;
+            });
+        }
+
+        function addActiviteTemp() {
+            const heure = document.getElementById('prog-activite-heure').value.trim();
+            const texte = document.getElementById('prog-activite-texte').value.trim();
+            if (heure && texte) {
+                tempActivites.push({ heure: heure, texte: texte });
+                tempActivites.sort((a, b) => a.heure.localeCompare(b.heure));
+                document.getElementById('prog-activite-heure').value = '';
+                document.getElementById('prog-activite-texte').value = '';
+                renderActivitesTempList();
+            }
+        }
+
+        function removeActiviteTemp(index) {
+            tempActivites.splice(index, 1);
+            renderActivitesTempList();
+        }
+
         function openAddProgrammeModal() {
             document.getElementById('prog-modal-title').innerText = "Ajouter un itinéraire";
             document.getElementById('prog-edit-id').value = "";
             document.getElementById('prog-ville').value = "";
             document.getElementById('prog-hotel').value = "";
             document.getElementById('prog-date').value = "";
-            document.getElementById('prog-details').value = "";
             document.getElementById('prog-maps').value = "";
+            tempActivites = [];
+            renderActivitesTempList();
             openModal('modal-programme');
         }
 
@@ -1529,10 +1630,51 @@
                 document.getElementById('prog-ville').value = item.ville;
                 document.getElementById('prog-hotel').value = item.hotel;
                 document.getElementById('prog-date').value = item.date;
-                document.getElementById('prog-details').value = item.details || "";
                 document.getElementById('prog-maps').value = item.maps || "";
+                tempActivites = item.activites ? JSON.parse(JSON.stringify(item.activites)) : [];
+                renderActivitesTempList();
                 openModal('modal-programme');
             }
+        }
+
+        function viewProgrammeDetails(id) {
+            const prog = appData.programme.find(p => p.id === id);
+            if (!prog) return;
+
+            document.getElementById('view-prog-title').innerText = `${prog.ville} — ${prog.date}`;
+
+            const activites = prog.activites || [];
+            let activitesHtml = '';
+            activites.forEach((act, i) => {
+                activitesHtml += `
+                    <div class="flight-detail-segment">
+                        <div class="segment-dot"></div>
+                        <div style="font-weight: 800; font-size: 1.05rem;">${act.heure}</div>
+                        <div style="font-size: 0.95rem; color: #444; margin-top: 2px;">${act.texte}</div>
+                    </div>
+                `;
+            });
+            if (activites.length === 0) {
+                activitesHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;">Aucune activité renseignée pour cette étape.</p>`;
+            }
+
+            const mapsHtml = prog.maps ? `<a href="${prog.maps}" target="_blank" style="display:inline-block; margin-top: 10px; color: var(--accent-green); font-weight: 600; font-size: 0.9rem;">Voir sur Google Maps</a>` : '';
+
+            document.getElementById('view-prog-details').innerHTML = `
+                <div class="card-subtitle" style="display:flex; align-items:center; gap: 8px; margin-bottom: 20px;">
+                    <i class="fa-solid fa-bed" style="color: #bbb;"></i> ${prog.hotel}
+                </div>
+                <h4 class="section-title" style="margin-top: 0;">Activités du jour</h4>
+                ${activitesHtml}
+                ${mapsHtml}
+            `;
+
+            document.getElementById('btn-trigger-edit-prog').onclick = function() {
+                closeModal('modal-view-programme');
+                openEditProgrammeModal(id);
+            };
+
+            openModal('modal-view-programme');
         }
 
         function renderProgramme() {
@@ -1542,18 +1684,15 @@
                 list.innerHTML += `
                     <div class="timeline-item">
                         <div class="timeline-badge">${index + 1}</div>
-                        <div class="card">
-                            <button class="delete-btn" onclick="event.stopPropagation(); deleteItem('programme', ${prog.id})"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="card clickable" onclick="viewProgrammeDetails(${prog.id})">
+                            <button class="delete-btn-round" onclick="event.stopPropagation(); deleteItem('programme', ${prog.id})"><i class="fa-solid fa-trash-can"></i></button>
                             <div class="card-header-row" style="margin-bottom: 5px;">
                                 <div class="card-title" style="font-size: 1.3rem;">${prog.ville}</div>
                                 <span class="card-date">${prog.date}</span>
                             </div>
-                            <div class="card-subtitle" style="display:flex; align-items:center; gap: 8px; margin-bottom: 5px;">
+                            <div class="card-subtitle" style="display:flex; align-items:center; gap: 8px;">
                                 <i class="fa-solid fa-bed" style="color: #bbb;"></i> ${prog.hotel}
                             </div>
-                            <div style="font-size: 0.9rem; margin: 10px 0; color: #555; white-space: pre-wrap;">${prog.details || ''}</div>
-                            ${prog.maps ? `<a href="${prog.maps}" target="_blank" style="display:block; margin-bottom:10px; font-size: 0.8rem; color: #007bff;">Voir sur Google Maps</a>` : ''}
-                            <button class="details-link" onclick="openEditProgrammeModal(${prog.id})">Modifier l'étape ></button>
                         </div>
                     </div>
                 `;
@@ -1713,8 +1852,8 @@ function saveProgramme() {
             const ville = document.getElementById('prog-ville').value;
             const hotel = document.getElementById('prog-hotel').value;
             const date = document.getElementById('prog-date').value;
-            const details = document.getElementById('prog-details').value; // Nouveau
-            const maps = document.getElementById('prog-maps').value;       // Nouveau
+            const maps = document.getElementById('prog-maps').value;
+            const activites = JSON.parse(JSON.stringify(tempActivites));
 
             if (ville && hotel && date) {
                 if (editId) {
@@ -1723,8 +1862,8 @@ function saveProgramme() {
                         item.ville = ville;
                         item.hotel = hotel;
                         item.date = date;
-                        item.details = details; // Mise à jour
-                        item.maps = maps;       // Mise à jour
+                        item.activites = activites;
+                        item.maps = maps;
                     }
                 } else {
                     appData.programme.push({
@@ -1732,60 +1871,16 @@ function saveProgramme() {
                         ville: ville,
                         hotel: hotel,
                         date: date,
-                        details: details, // Ajout
-                        maps: maps        // Ajout
+                        activites: activites,
+                        maps: maps
                     });
                 }
                 
                 saveToLocalStorage();
                 renderProgramme();
                 closeModal('modal-programme');
-                // Optionnel : on vide les champs après l'enregistrement
-                document.getElementById('prog-details').value = '';
-                document.getElementById('prog-maps').value = '';
+                tempActivites = [];
             }
-        }
-
-        // ================= SYNC JSON =================
-
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", "notre_voyage_japon_sauvegarde.json");
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    if (importedData.vols && importedData.programme && importedData.checklist && importedData.budget && importedData.infos) {
-                        appData = importedData;
-                        saveToLocalStorage();
-                        
-                        updateCountdown();
-                        renderVols();
-                        renderProgramme();
-                        renderChecklist();
-                        updateBudgetUI();
-                        renderInfos();
-                        
-                        alert("🎉 Super ! Les données de voyage ont été importées avec succès !");
-                    } else {
-                        alert("❌ Format de fichier invalide.");
-                    }
-                } catch (error) {
-                    alert("❌ Erreur lors de la lecture du fichier.");
-                }
-            };
-            reader.readAsText(file);
         }
 
         window.onload = function() {
