@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Notre Voyage au Japon</title>
+    <!-- Manifest pour l'installation sur l'écran d'accueil iPhone (PWA) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Japon 2026">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=180&auto=format&fit=crop">
+    
+    <!-- Font Awesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #f7f7f7;
+            --card-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --text-muted: #757575;
+            --accent: #e60012; /* Rouge Japon */
+            --accent-green: #7d9385; /* Couleur de tes boutons + sur tes screens */
+            --border-radius: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding-bottom: 90px; /* Espace pour la barre de navigation */
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* En-tête avec le Mont Fuji pour l'Accueil */
+        .home-header {
+            position: relative;
+            height: 380px;
+            background: url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 24px;
+            color: white;
+        }
+
+        .home-header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 60%, var(--bg-color) 100%);
+        }
+
+        .home-header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .japan-label {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .countdown-container {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .countdown-number {
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .countdown-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .trip-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .trip-dates {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.80);
+            font-weight: 500;
+        }
+
+        /* En-têtes des autres pages */
+        .page-header {
+            padding: 30px 20px 15px 20px;
+            background-color: var(--bg-color);
+        }
+
+        .page-header h1 {
+            font-size: 2.1rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Conteneurs de pages */
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content-container {
+            padding: 0 20px 20px 20px;
+        }
+
+        /* Style des Cartes (Cards) */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            position: relative;
+        }
+
+        .card-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background-color: #f2f2f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .card-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .card-date {
+            font-size: 0.9rem;
+            font-weight: 700;
+            background-color: #e8eae9;
+            padding: 4px 12px;
+            border-radius: 12px;
+            color: #666;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* Trajet des Vols */
+        .flight-route {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            position: relative;
+        }
+
+        .flight-airport {
+            text-align: left;
+        }
+
+        .flight-airport.right {
+            text-align: right;
+        }
+
+        .airport-code {
+            font-size: 1.7rem;
+            font-weight: 950;
+            line-height: 1.1;
+        }
+
+        .airport-city {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .flight-line-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 0 15px;
+        }
+
+        .flight-line {
+            height: 1px;
+            background-color: #ddd;
+            width: 100%;
+            position: relative;
+        }
+
+        .flight-line::before, .flight-line::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background-color: #aaa;
+            border-radius: 50%;
+            position: absolute;
+            top: -2.5px;
+        }
+
+        .flight-line::before { left: 0; }
+        .flight-line::after { right: 0; }
+
+        .flight-icon-center {
+            position: absolute;
+            background-color: white;
+            padding: 0 8px;
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        /* Itinéraire (timeline) */
+        .timeline {
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 15px;
+            bottom: 15px;
+            width: 2px;
+            background-color: #e5e5e5;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 5px;
+        }
+
+        .timeline-badge {
+            position: absolute;
+            left: -30px;
+            top: 15px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            z-index: 1;
+        }
+
+        .details-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: var(--accent-green);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        /* Checklist */
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin: 15px 0 10px 5px;
+            text-transform: uppercase;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background-color: var(--card-bg);
+            border-radius: 15px;
+            padding: 16px;
+            margin-bottom: 10px;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.01);
+        }
+
+        .checkbox-round {
+            width: 24px;
+            height: 24px;
+            background-color: #fff;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            appearance: none;
+            -webkit-appearance: none;
+            outline: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .checkbox-round:checked {
+            background-color: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        .checkbox-round:checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            color: white;
+            font-size: 0.7rem;
+        }
+
+        .checklist-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            flex-grow: 1;
+        }
+
+        .checklist-item.checked .checklist-label {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        /* Budget & Clavier */
+        .live-rate {
+            color: #72aa51;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #72aa51;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .calculator-screen {
+            background-color: #1a1a1a;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .screen-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 10px 0;
+        }
+
+        .screen-row:first-child {
+            border-bottom: 1px solid #333;
+        }
+
+        .screen-label {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #666;
+        }
+
+        .screen-value {
+            font-size: 2.2rem;
+            font-weight: 900;
+        }
+
+        .screen-value span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-right: 5px;
+        }
+
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .key {
+            background-color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 18px 0;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+            transition: background-color 0.1s;
+        }
+
+        .key:active {
+            background-color: #e5e5e5;
+        }
+
+        .planned-budget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .budget-badge {
+            background-color: #e8eae9;
+            padding: 6px 14px;
+            border-radius: 15px;
+            font-weight: 750;
+            font-size: 1rem;
+            color: #4a5d51;
+        }
+
+        .expense-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px;
+            background-color: white;
+            border-radius: 15px;
+            margin-bottom: 12px;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.01);
+        }
+
+        .expense-info h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .expense-info p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .expense-amounts {
+            text-align: right;
+            margin-right: 25px;
+        }
+
+        .expense-eur {
+            font-size: 1.15rem;
+            font-weight: 850;
+        }
+
+        /* Boutons flottants de création (+) */
+        .btn-add-float {
+            position: fixed;
+            bottom: 105px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 12px rgba(125, 147, 133, 0.4);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* Boutons d'export/import */
+        .sync-buttons-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn-sync {
+            flex: 1;
+            background-color: #eaeaea;
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .btn-sync.export {
+            background-color: var(--accent-green);
+            color: white;
+        }
+
+        /* Barre de navigation inférieure fixe style iPhone */
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 85px;
+            background-color: white;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-around;
+            padding-top: 10px;
+            padding-bottom: 20px; /* Safe area pour le bas de l'iPhone */
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #8e8e93;
+            text-decoration: none;
+            font-size: 0.65rem;
+            font-weight: 700;
+            width: 20%;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .nav-item i {
+            font-size: 1.4rem;
+        }
+
+        .nav-item.active {
+            color: #7d9385; /* Couleur de tes icônes actives */
+        }
+
+        /* Modals pour ajouter des éléments */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: flex-end;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            width: 100%;
+            border-top-left-radius: 25px;
+            border-top-right-radius: 25px;
+            padding: 25px;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal h3 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+            font-weight: 500;
+            outline: none;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-modal.cancel {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        .btn-modal.save {
+            background-color: var(--accent-green);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================= CONTENU DE L'ACCUEIL ================= -->
+    <div id="page-accueil" class="page active">
+        <div class="home-header">
+            <div class="home-header-content">
+                <div class="japan-label">日本</div>
+                <div class="countdown-container">
+                    <span class="countdown-number" id="days-count">45</span>
+                    <span class="countdown-text">jours avant le départ</span>
+                </div>
+                <div class="trip-title">Notre voyage au Japon</div>
+                <div class="trip-dates">31 août — 14 sept. 2026</div>
+            </div>
+        </div>
+
+        <div class="content-container" style="margin-top: 20px;">
+            <h2 class="section-title">Vols</h2>
+            <div id="vols-list">
+                <!-- Les cartes de vols seront générées par JavaScript -->
+            </div>
+            <div style="text-align: center; margin-top: 20px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                Connecté : phesoog@gmail.com
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CONTENU DU PROGRAMME ================= -->
+    <div id="page-programme" class="page">
+        <div class="page-header">
+            <h1>Mon itinéraire</h1>
+            <p>Appuie sur un jour pour l'ouvrir</p>
+        </div>
+        <div class="content-container">
+            <div class="timeline" id="programme-list">
+                <!-- Généré par JS -->
+            </div>
+        </div>
+        <button class="btn-add-float" onclick="openModal('modal-programme')"><i class="fa-solid fa-plus"></i></button>
+    </div>
+
+    <!-- ================= CONTENU DE LA CHECKLIST ================= -->
+    <div id="page-checklist" class="page">
+        <div class="page-header">
+            <h1>Notre checklist</h1>
+            <p id="checklist-progress">0/4 prêts pour le départ</p>
+        </div>
+        <div class="content-container" id="checklist-categories">
+            <!-- Généré par JS (ÉLECTRONIQUE, VÊTEMENTS, etc.) -->
+        </div>
+        <button class="btn-add-float" onclick="openModal('modal-checklist')"><i class="fa-solid fa-plus"></i></button>
+    </div>
+
+    <!-- ================= CONTENU DU BUDGET ================= -->
+    <div id="page-budget" class="page">
+        <div class="page-header">
+            <h1>Budget & Convertisseur</h1>
+            <div class="live-rate"><span class="live-dot"></span> 1 € = 186.0 ¥ (en direct)</div>
+        </div>
+        <div class="content-container">
+            <!-- Zone Clavier / Convertisseur -->
+            <div class="calculator-screen">
+                <div class="screen-row">
+                    <span class="screen-label">EUR</span>
+                    <span class="screen-value" id="calc-eur">0</span>
+                </div>
+                <div class="screen-row">
+                    <span class="screen-label">JPY</span>
+                    <span class="screen-value" id="calc-jpy">¥ 0</span>
+                </div>
+            </div>
+
+            <div class="keyboard">
+                <button class="key" onclick="pressKey('1')">1</button>
+                <button class="key" onclick="pressKey('2')">2</button>
+                <button class="key" onclick="pressKey('3')">3</button>
+                <button class="key" onclick="pressKey('4')">4</button>
+                <button class="key" onclick="pressKey('5')">5</button>
+                <button class="key" onclick="pressKey('6')">6</button>
+                <button class="key" onclick="pressKey('7')">7</button>
+                <button class="key" onclick="pressKey('8')">8</button>
+                <button class="key" onclick="pressKey('9')">9</button>
+                <button class="key" onclick="pressKey('.')">.</button>
+                <button class="key" onclick="pressKey('0')">0</button>
+                <button class="key" onclick="pressKey('delete')"><i class="fa-solid fa-delete-left"></i></button>
+            </div>
+
+            <!-- Dépenses prévues -->
+            <div class="planned-budget-header">
+                <h2 class="section-title" style="margin:0;">Dépenses prévues</h2>
+                <div class="budget-badge" id="total-budget-badge">0.00 €</div>
+            </div>
+
+            <div id="expenses-list">
+                <!-- Généré par JS -->
+            </div>
+        </div>
+        <button class="btn-add-float" onclick="openModal('modal-budget')"><i class="fa-solid fa-plus"></i></button>
+    </div>
+
+    <!-- ================= CONTENU DES INFOS ================= -->
+    <div id="page-infos" class="page">
+        <div class="page-header">
+            <h1>Infos utiles</h1>
+            <p>Tout ce qu'il faut avoir sous la main</p>
+        </div>
+        <div class="content-container">
+            <div id="infos-list">
+                <!-- Génré par JS -->
+            </div>
+
+            <!-- BOUTONS D'IMPORT / EXPORT DE SAUVEGARDE -->
+            <div class="sync-buttons-container">
+                <button class="btn-sync export" onclick="exportData()">
+                    <i class="fa-solid fa-file-export"></i> Exporter mes données
+                </button>
+                <button class="btn-sync" onclick="document.getElementById('import-input').click()">
+                    <i class="fa-solid fa-file-import"></i> Importer des données
+                </button>
+                <input type="file" id="import-input" style="display:none;" onchange="importData(event)">
+            </div>
+        </div>
+        <button class="btn-add-float" onclick="openModal('modal-infos')"><i class="fa-solid fa-plus"></i></button>
+    </div>
+
+    <!-- ================= BARRE DE NAVIGATION INFÉRIEURE ================= -->
+    <nav class="nav-bar">
+        <div class="nav-item active" onclick="switchTab('accueil', this)">
+            <i class="fa-solid fa-house"></i>
+            <span>Accueil</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('programme', this)">
+            <i class="fa-solid fa-map-location-dot"></i>
+            <span>Programme</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('checklist', this)">
+            <i class="fa-solid fa-square-check"></i>
+            <span>Checklist</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('budget', this)">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Budget</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('infos', this)">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Infos</span>
+        </div>
+    </nav>
+
+    <!-- ================= MODALS D'AJOUT ================= -->
+
+    <!-- Modal Programme -->
+    <div class="modal" id="modal-programme">
+        <div class="modal-content">
+            <h3>Ajouter un itinéraire</h3>
+            <div class="input-group">
+                <label>Ville</label>
+                <input type="text" id="prog-ville" placeholder="Ex: Kyoto">
+            </div>
+            <div class="input-group">
+                <label>Hôtel / Lieu</label>
+                <input type="text" id="prog-hotel" placeholder="Ex: Piece Hostel Sanjo">
+            </div>
+            <div class="input-group">
+                <label>Date</label>
+                <input type="text" id="prog-date" placeholder="Ex: 3 sept.">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-programme')">Annuler</button>
+                <button class="btn-modal save" onclick="saveProgramme()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Checklist -->
+    <div class="modal" id="modal-checklist">
+        <div class="modal-content">
+            <h3>Ajouter un élément</h3>
+            <div class="input-group">
+                <label>Catégorie</label>
+                <select id="check-cat">
+                    <option value="ÉLECTRONIQUE">ÉLECTRONIQUE</option>
+                    <option value="VÊTEMENTS">VÊTEMENTS</option>
+                    <option value="ADMINISTRATIF">ADMINISTRATIF</option>
+                    <option value="AUTRE">AUTRE</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Nom de l'élément</label>
+                <input type="text" id="check-text" placeholder="Ex: Adaptateur secteur">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-checklist')">Annuler</button>
+                <button class="btn-modal save" onclick="saveChecklist()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Budget -->
+    <div class="modal" id="modal-budget">
+        <div class="modal-content">
+            <h3>Ajouter une dépense</h3>
+            <div class="input-group">
+                <label>Nom de la dépense</label>
+                <input type="text" id="bud-name" placeholder="Ex: Disney">
+            </div>
+            <div class="input-group">
+                <label>Montant en Euros (€)</label>
+                <input type="number" id="bud-amount" placeholder="Ex: 212">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-budget')">Annuler</button>
+                <button class="btn-modal save" onclick="saveBudget()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Infos -->
+    <div class="modal" id="modal-infos">
+        <div class="modal-content">
+            <h3>Ajouter une info utile</h3>
+            <div class="input-group">
+                <label>Type d'information (Titre)</label>
+                <input type="text" id="info-title" placeholder="Ex: JR Pass ou Adresses hôtels">
+            </div>
+            <div class="input-group">
+                <label>Détails / Description</label>
+                <textarea id="info-desc" rows="3" placeholder="Ex: Saisissez les adresses ou indications importantes..."></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-infos')">Annuler</button>
+                <button class="btn-modal save" onclick="saveInfo()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= LOGIQUE JAVASCRIPT ================= -->
+    <script>
+        const TAUX_CHANGE = 186.0;
+
+        // Base de données par défaut de ton voyage (toutes les infos de tes screens d'origine)
+        const defaultData = {
+            vols: [
+                { type: "Aller", compagnie: "Air France", date: "08-31", dep: "CDG", depCity: "Paris", arr: "KIX", arrCity: "Osaka" },
+                { type: "Retour", compagnie: "Air France", date: "09-14", dep: "NRT", depCity: "Tokyo", arr: "CDG", arrCity: "Paris" }
+            ],
+            programme: [
+                { id: 1, ville: "Osaka", hotel: "Arrivée KIX — Hotel Namba", date: "31 août" },
+                { id: 2, ville: "Osaka", hotel: "Hotel Namba", date: "1 sept." },
+                { id: 3, ville: "Kyoto", hotel: "Piece Hostel Sanjo", date: "3 sept." },
+                { id: 4, ville: "Tokyo", hotel: "Hotel Gracery Shinjuku", date: "8 sept." }
+            ],
+            checklist: [
+                { id: 1, categorie: "ÉLECTRONIQUE", texte: "Adaptateur secteur", checked: false },
+                { id: 2, categorie: "ÉLECTRONIQUE", texte: "Batterie externe", checked: false },
+                { id: 3, categorie: "VÊTEMENTS", texte: "Vêtements légers", checked: false },
+                { id: 4, categorie: "VÊTEMENTS", texte: "Parapluie", checked: false }
+            ],
+            budget: [
+                { id: 1, nom: "Disney", eur: 212 },
+                { id: 2, nom: "USJ", eur: 580 }
+            ],
+            infos: [
+                { id: 1, titre: "Numéros d'urgence", desc: "Police : 110\nAmbulance / Pompiers : 119\nAmbassade de France (Tokyo) : +81 3-5798-6000" },
+                { id: 2, titre: "Adresses hôtels", desc: "Osaka — Hotel Namba\nKyoto — Piece Hostel Sanjo\nTokyo — Hotel Gracery Shinjuku" },
+                { id: 3, titre: "JR Pass", desc: "Pass 14 jours activé le 31 août.\nValable Shinkansen (sauf Nozomi/Mizuho)." },
+                { id: 4, titre: "WiFi / Pocket WiFi", desc: "Récupération à l'aéroport KIX (comptoir Ninja WiFi).\nCode routeur : voir pochette." }
+            ]
+        };
+
+        let appData = JSON.parse(localStorage.getItem('voyage_japon_data')) || defaultData;
+
+        // Sauvegarde dans le navigateur
+        function saveToLocalStorage() {
+            localStorage.setItem('voyage_japon_data', JSON.stringify(appData));
+        }
+
+        // Système d'onglets
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            document.getElementById('page-' + tabId).classList.add('active');
+            el.classList.add('active');
+            
+            // Re-calculer si on va sur la page budget
+            if (tabId === 'budget') {
+                updateBudgetUI();
+            }
+        }
+
+        // Calcul du compte à rebours basé sur la date de départ : 31 Août 2026
+        function updateCountdown() {
+            const dateDepart = new Date("2026-08-31T00:00:00");
+            const aujourdhui = new Date();
+            const difference = dateDepart - aujourdhui;
+            const joursRestants = Math.ceil(difference / (1000 * 60 * 60 * 24));
+            document.getElementById('days-count').innerText = joursRestants > 0 ? joursRestants : 0;
+        }
+
+        // Modals
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // ================= RENDUS DES LISTES =================
+
+        // Rendu Accueil (Vols)
+        function renderVols() {
+            const list = document.getElementById('vols-list');
+            list.innerHTML = '';
+            appData.vols.forEach(vol => {
+                list.innerHTML += `
+                    <div class="card">
+                        <div class="card-header-row">
+                            <div class="card-title-group">
+                                <div class="card-icon"><i class="fa-solid fa-plane"></i></div>
+                                <div>
+                                    <div class="card-title">${vol.type}</div>
+                                    <div class="card-subtitle">${vol.compagnie}</div>
+                                </div>
+                            </div>
+                            <span class="card-date">${vol.date}</span>
+                        </div>
+                        <div class="flight-route">
+                            <div class="flight-airport">
+                                <div class="airport-code">${vol.dep}</div>
+                                <div class="airport-city">${vol.depCity}</div>
+                            </div>
+                            <div class="flight-line-container">
+                                <div class="flight-line"></div>
+                                <i class="fa-solid fa-plane flight-icon-center"></i>
+                            </div>
+                            <div class="flight-airport right">
+                                <div class="airport-code">${vol.arr}</div>
+                                <div class="airport-city">${vol.arrCity}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Rendu Programme
+        function renderProgramme() {
+            const list = document.getElementById('programme-list');
+            list.innerHTML = '';
+            appData.programme.forEach((prog, index) => {
+                list.innerHTML += `
+                    <div class="timeline-item">
+                        <div class="timeline-badge">${index + 1}</div>
+                        <div class="card">
+                            <button class="delete-btn" onclick="deleteItem('programme', ${prog.id})"><i class="fa-solid fa-xmark"></i></button>
+                            <div class="card-header-row" style="margin-bottom: 5px;">
+                                <div class="card-title" style="font-size: 1.3rem;">${prog.ville}</div>
+                                <span class="card-date">${prog.date}</span>
+                            </div>
+                            <div class="card-subtitle" style="display:flex; align-items:center; gap: 8px;">
+                                <i class="fa-solid fa-bed" style="color: #bbb;"></i> ${prog.hotel}
+                            </div>
+                            <a href="#" class="details-link">Voir le détail ></a>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Rendu Checklist
+        function renderChecklist() {
+            const container = document.getElementById('checklist-categories');
+            container.innerHTML = '';
+
+            // Regrouper par catégories
+            const categories = {};
+            appData.checklist.forEach(item => {
+                if (!categories[item.categorie]) {
+                    categories[item.categorie] = [];
+                }
+                categories[item.categorie].push(item);
+            });
+
+            for (const [catName, items] of Object.entries(categories)) {
+                let catHtml = `<div class="section-title">${catName}</div>`;
+                items.forEach(item => {
+                    catHtml += `
+                        <div class="checklist-item ${item.checked ? 'checked' : ''}">
+                            <input type="checkbox" class="checkbox-round" ${item.checked ? 'checked' : ''} onclick="toggleCheck(${item.id})">
+                            <span class="checklist-label">${item.texte}</span>
+                            <button class="delete-btn" onclick="deleteItem('checklist', ${item.id})" style="top:18px; right:15px;"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    `;
+                });
+                container.innerHTML += catHtml;
+            }
+
+            // Mettre à jour la barre de progression
+            const checkedCount = appData.checklist.filter(i => i.checked).length;
+            document.getElementById('checklist-progress').innerText = `${checkedCount}/${appData.checklist.length} prêts pour le départ`;
+        }
+
+        function toggleCheck(id) {
+            const item = appData.checklist.find(i => i.id === id);
+            if (item) {
+                item.checked = !item.checked;
+                saveToLocalStorage();
+                renderChecklist();
+            }
+        }
+
+        // Rendu Budget
+        let currentEurInput = "0";
+
+        function updateBudgetUI() {
+            // Mise à jour de l'écran convertisseur
+            document.getElementById('calc-eur').innerText = formatNumberString(currentEurInput);
+            const valEur = parseFloat(currentEurInput) || 0;
+            const valJpy = Math.round(valEur * TAUX_CHANGE);
+            document.getElementById('calc-jpy').innerText = '¥ ' + valJpy.toLocaleString('fr-FR');
+
+            // Liste des dépenses et calcul total
+            const list = document.getElementById('expenses-list');
+            list.innerHTML = '';
+            let totalEur = 0;
+
+            appData.budget.forEach(exp => {
+                const eqJpy = Math.round(exp.eur * TAUX_CHANGE);
+                totalEur += exp.eur;
+                list.innerHTML += `
+                    <div class="expense-card">
+                        <button class="delete-btn" onclick="deleteItem('budget', ${exp.id})" style="top: 18px; right: 15px;"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="expense-info">
+                            <h4>${exp.nom}</h4>
+                            <p>¥ ${eqJpy.toLocaleString('fr-FR')}</p>
+                        </div>
+                        <div class="expense-amounts">
+                            <span class="expense-eur">${exp.eur.toFixed(2)} €</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('total-budget-badge').innerText = totalEur.toFixed(2) + ' €';
+        }
+
+        function formatNumberString(str) {
+            if (str === "0") return "0";
+            return parseFloat(str).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+        }
+
+        function pressKey(key) {
+            if (key === 'delete') {
+                currentEurInput = currentEurInput.slice(0, -1);
+                if (currentEurInput === "" || currentEurInput === "-") currentEurInput = "0";
+            } else if (key === '.') {
+                if (!currentEurInput.includes('.')) {
+                    currentEurInput += '.';
+                }
+            } else {
+                if (currentEurInput === "0") {
+                    currentEurInput = key;
+                } else {
+                    currentEurInput += key;
+                }
+            }
+            updateBudgetUI();
+        }
+
+        // Rendu Infos
+        function renderInfos() {
+            const list = document.getElementById('infos-list');
+            list.innerHTML = '';
+            
+            // Map d'icônes adaptées aux titres
+            const iconsMap = {
+                "urgence": '<i class="fa-solid fa-phone"></i>',
+                "hôtel": '<i class="fa-solid fa-bed"></i>',
+                "pass": '<i class="fa-solid fa-train"></i>',
+                "wifi": '<i class="fa-solid fa-wifi"></i>'
+            };
+
+            appData.infos.forEach(info => {
+                let currentIcon = '<i class="fa-solid fa-circle-info"></i>';
+                const lowerTitle = info.titre.toLowerCase();
+                
+                for (const [key, icon] of Object.entries(iconsMap)) {
+                    if (lowerTitle.includes(key)) {
+                        currentIcon = icon;
+                        break;
+                    }
+                }
+
+                list.innerHTML += `
+                    <div class="card">
+                        <button class="delete-btn" onclick="deleteItem('infos', ${info.id})"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="card-header-row" style="margin-bottom: 12px;">
+                            <div class="card-title-group">
+                                <div class="card-icon" style="background-color: #fcebeb; color: var(--accent);">${currentIcon}</div>
+                                <div class="card-title" style="font-size: 1.2rem;">${info.titre}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.95rem; line-height: 1.5; color: #444; white-space: pre-line; font-weight: 500;">${info.desc}</div>
+                    </div>
+                `;
+            });
+        }
+
+        // Suppression d'un item générique
+        function deleteItem(category, id) {
+            if (confirm("Voulez-vous vraiment supprimer cet élément ?")) {
+                appData[category] = appData[category].filter(item => item.id !== id);
+                saveToLocalStorage();
+                
+                if (category === 'programme') renderProgramme();
+                if (category === 'checklist') renderChecklist();
+                if (category === 'budget') updateBudgetUI();
+                if (category === 'infos') renderInfos();
+            }
+        }
+
+        // ================= SAUVEGARDE DE NOUVEAUX ÉLÉMENTS =================
+
+        function saveProgramme() {
+            const ville = document.getElementById('prog-ville').value;
+            const hotel = document.getElementById('prog-hotel').value;
+            const date = document.getElementById('prog-date').value;
+
+            if (ville && hotel && date) {
+                const newItem = {
+                    id: Date.now(),
+                    ville: ville,
+                    hotel: hotel,
+                    date: date
+                };
+                appData.programme.push(newItem);
+                saveToLocalStorage();
+                renderProgramme();
+                closeModal('modal-programme');
+                
+                // Clear inputs
+                document.getElementById('prog-ville').value = '';
+                document.getElementById('prog-hotel').value = '';
+                document.getElementById('prog-date').value = '';
+            }
+        }
+
+        function saveChecklist() {
+            const cat = document.getElementById('check-cat').value;
+            const text = document.getElementById('check-text').value;
+
+            if (text) {
+                const newItem = {
+                    id: Date.now(),
+                    categorie: cat,
+                    texte: text,
+                    checked: false
+                };
+                appData.checklist.push(newItem);
+                saveToLocalStorage();
+                renderChecklist();
+                closeModal('modal-checklist');
+                
+                document.getElementById('check-text').value = '';
+            }
+        }
+
+        function saveBudget() {
+            const name = document.getElementById('bud-name').value;
+            const amount = parseFloat(document.getElementById('bud-amount').value);
+
+            if (name && amount) {
+                const newItem = {
+                    id: Date.now(),
+                    nom: name,
+                    eur: amount
+                };
+                appData.budget.push(newItem);
+                saveToLocalStorage();
+                updateBudgetUI();
+                closeModal('modal-budget');
+                
+                document.getElementById('bud-name').value = '';
+                document.getElementById('bud-amount').value = '';
+            }
+        }
+
+        function saveInfo() {
+            const title = document.getElementById('info-title').value;
+            const desc = document.getElementById('info-desc').value;
+
+            if (title && desc) {
+                const newItem = {
+                    id: Date.now(),
+                    titre: title,
+                    desc: desc
+                };
+                appData.infos.push(newItem);
+                saveToLocalStorage();
+                renderInfos();
+                closeModal('modal-infos');
+                
+                document.getElementById('info-title').value = '';
+                document.getElementById('info-desc').value = '';
+            }
+        }
+
+        // ================= FONCTIONS SYNC IMPORT / EXPORT JSON =================
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "notre_voyage_japon_sauvegarde.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData.vols && importedData.programme && importedData.checklist && importedData.budget && importedData.infos) {
+                        appData = importedData;
+                        saveToLocalStorage();
+                        
+                        // Re-rendre tous les onglets
+                        renderVols();
+                        renderProgramme();
+                        renderChecklist();
+                        updateBudgetUI();
+                        renderInfos();
+                        
+                        alert("🎉 Super ! Les données de voyage ont été importées avec succès !");
+                    } else {
+                        alert("❌ Format de fichier invalide.");
+                    }
+                } catch (error) {
+                    alert("❌ Erreur lors de la lecture du fichier de sauvegarde.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ================= INITIALISATION =================
+        window.onload = function() {
+            updateCountdown();
+            renderVols();
+            renderProgramme();
+            renderChecklist();
+            updateBudgetUI();
+            renderInfos();
+        };
+    </script>
+</body>
+</html>
