@@ -13,12 +13,14 @@
     
     <style>
         :root {
-            --bg-color: #f7f7f7;
-            --card-bg: #ffffff;
-            --text-main: #1a1a1a;
-            --text-muted: #757575;
+            --bg-color: #fdf4f2;
+            --card-bg: #fffcfb;
+            --text-main: #2a2220;
+            --text-muted: #8a7975;
             --accent: #e60012;
             --accent-green: #7d9385;
+            --sakura: #f6a8c0;
+            --sakura-dark: #e88aa8;
             --border-radius: 20px;
         }
 
@@ -117,6 +119,11 @@
         .page-header {
             padding: 30px 20px 15px 20px;
             background-color: var(--bg-color);
+            position: relative;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23f6a8c0' opacity='0.35'%3E%3Cellipse cx='50' cy='26' rx='13' ry='19'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(72 50 50)'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(144 50 50)'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(216 50 50)'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(288 50 50)'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='6' fill='%23e88aa8' opacity='0.45'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: top right -10px;
+            background-size: 110px 110px;
         }
 
         .page-header h1 {
@@ -729,6 +736,36 @@
             color: white;
         }
 
+        .sakura-container {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 5;
+        }
+
+        .sakura-petal {
+            position: absolute;
+            top: -20px;
+            width: 13px;
+            height: 13px;
+            background: linear-gradient(135deg, #ffe1ea, var(--sakura));
+            border-radius: 0% 70% 0% 70%;
+            opacity: 0;
+            animation: sakura-fall linear infinite;
+        }
+
+        @keyframes sakura-fall {
+            0% { transform: translateY(-20px) translateX(0) rotate(0deg); opacity: 0; }
+            8% { opacity: 0.85; }
+            90% { opacity: 0.6; }
+            100% { transform: translateY(100vh) translateX(var(--drift, 40px)) rotate(360deg); opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sakura-container { display: none; }
+        }
+
         .nav-bar {
             position: fixed;
             bottom: 0;
@@ -975,6 +1012,17 @@
     </style>
 </head>
 <body>
+
+    <!-- Pétales de sakura décoratifs — purement visuels, ne bloquent aucun clic -->
+    <div class="sakura-container" aria-hidden="true">
+        <div class="sakura-petal" style="left:4%; --drift:30px; animation-duration:11s; animation-delay:0s;"></div>
+        <div class="sakura-petal" style="left:18%; --drift:-25px; animation-duration:14s; animation-delay:3s;"></div>
+        <div class="sakura-petal" style="left:34%; --drift:35px; animation-duration:9s; animation-delay:6s;"></div>
+        <div class="sakura-petal" style="left:50%; --drift:-30px; animation-duration:13s; animation-delay:1.5s;"></div>
+        <div class="sakura-petal" style="left:65%; --drift:25px; animation-duration:10s; animation-delay:4.5s;"></div>
+        <div class="sakura-petal" style="left:80%; --drift:-35px; animation-duration:15s; animation-delay:7s;"></div>
+        <div class="sakura-petal" style="left:92%; --drift:20px; animation-duration:12s; animation-delay:2.5s;"></div>
+    </div>
 
     <!-- ================= ACCUEIL ================= -->
     <div id="page-accueil" class="page active">
