@@ -10,18 +10,22 @@
     <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=180&auto=format&fit=crop">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;800&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --bg-color: #fdf4f2;
-            --card-bg: #fffcfb;
-            --text-main: #2a2220;
-            --text-muted: #8a7975;
+            --bg-color: #faf7f2;
+            --card-bg: #ffffff;
+            --text-main: #2b241f;
+            --text-muted: #8c7f78;
             --accent: #e60012;
             --accent-green: #7d9385;
-            --sakura: #f6a8c0;
-            --sakura-dark: #e88aa8;
+            --sakura: #e6a4b4;
+            --sakura-pale: #f6dfe4;
             --border-radius: 20px;
+            --font-jp: 'Shippori Mincho B1', serif;
         }
 
         * {
@@ -58,14 +62,28 @@
             background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 60%, var(--bg-color) 100%);
         }
 
+        .home-header::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 150px;
+            height: 150px;
+            opacity: 0.55;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Cpath d='M148 2C120 20 95 40 78 68' stroke='%23ffffff' stroke-width='1.5' fill='none' opacity='0.6'/%3E%3Cpath d='M120 14C110 24 100 36 92 50' stroke='%23ffffff' stroke-width='1' fill='none' opacity='0.4'/%3E%3Cg fill='%23f6dfe4'%3E%3Cellipse cx='95' cy='30' rx='6' ry='9' transform='rotate(20 95 30)'/%3E%3Cellipse cx='108' cy='24' rx='6' ry='9' transform='rotate(-10 108 24)'/%3E%3Cellipse cx='120' cy='34' rx='6' ry='9' transform='rotate(55 120 34)'/%3E%3C/g%3E%3Cg fill='%23ffffff' opacity='0.85'%3E%3Cellipse cx='68' cy='58' rx='5' ry='7' transform='rotate(30 68 58)'/%3E%3Cellipse cx='78' cy='50' rx='5' ry='7' transform='rotate(-15 78 50)'/%3E%3C/g%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            pointer-events: none;
+        }
+
         .home-header-content {
             position: relative;
             z-index: 1;
         }
 
         .japan-label {
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-family: var(--font-jp);
+            font-size: 1.6rem;
+            font-weight: 600;
+            letter-spacing: 2px;
             margin-bottom: 5px;
         }
 
@@ -99,8 +117,9 @@
         }
 
         .trip-title {
-            font-size: 1.6rem;
-            font-weight: 800;
+            font-family: var(--font-jp);
+            font-size: 1.5rem;
+            font-weight: 600;
             margin-bottom: 5px;
             display: flex;
             align-items: center;
@@ -117,19 +136,29 @@
         }
 
         .page-header {
-            padding: 30px 20px 15px 20px;
+            padding: 30px 20px 18px 20px;
             background-color: var(--bg-color);
-            position: relative;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23f6a8c0' opacity='0.35'%3E%3Cellipse cx='50' cy='26' rx='13' ry='19'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(72 50 50)'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(144 50 50)'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(216 50 50)'/%3E%3Cellipse cx='50' cy='26' rx='13' ry='19' transform='rotate(288 50 50)'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='6' fill='%23e88aa8' opacity='0.45'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: top right -10px;
-            background-size: 110px 110px;
         }
 
         .page-header h1 {
-            font-size: 2.1rem;
-            font-weight: 800;
+            font-family: var(--font-jp);
+            font-size: 2rem;
+            font-weight: 600;
             color: var(--text-main);
+            position: relative;
+            display: inline-block;
+            padding-bottom: 10px;
+        }
+
+        .page-header h1::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 44px;
+            height: 3px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--sakura-pale));
         }
 
         .page-header p {
@@ -159,6 +188,7 @@
 
         .card {
             background-color: var(--card-bg);
+            border: 1px solid #f1e9e4;
             border-radius: var(--border-radius);
             padding: 18px;
             margin-bottom: 16px;
@@ -481,6 +511,18 @@
             letter-spacing: 1px;
             margin: 15px 0 10px 5px;
             text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sakura);
+            flex-shrink: 0;
         }
 
         .checklist-item {
@@ -736,36 +778,6 @@
             color: white;
         }
 
-        .sakura-container {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            pointer-events: none;
-            overflow: hidden;
-            z-index: 5;
-        }
-
-        .sakura-petal {
-            position: absolute;
-            top: -20px;
-            width: 13px;
-            height: 13px;
-            background: linear-gradient(135deg, #ffe1ea, var(--sakura));
-            border-radius: 0% 70% 0% 70%;
-            opacity: 0;
-            animation: sakura-fall linear infinite;
-        }
-
-        @keyframes sakura-fall {
-            0% { transform: translateY(-20px) translateX(0) rotate(0deg); opacity: 0; }
-            8% { opacity: 0.85; }
-            90% { opacity: 0.6; }
-            100% { transform: translateY(100vh) translateX(var(--drift, 40px)) rotate(360deg); opacity: 0; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .sakura-container { display: none; }
-        }
-
         .nav-bar {
             position: fixed;
             bottom: 0;
@@ -800,6 +812,21 @@
 
         .nav-item.active {
             color: #7d9385;
+        }
+
+        .nav-item.active i {
+            position: relative;
+        }
+
+        .nav-item.active i::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -5px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sakura);
         }
 
         .modal {
@@ -1012,17 +1039,6 @@
     </style>
 </head>
 <body>
-
-    <!-- Pétales de sakura décoratifs — purement visuels, ne bloquent aucun clic -->
-    <div class="sakura-container" aria-hidden="true">
-        <div class="sakura-petal" style="left:4%; --drift:30px; animation-duration:11s; animation-delay:0s;"></div>
-        <div class="sakura-petal" style="left:18%; --drift:-25px; animation-duration:14s; animation-delay:3s;"></div>
-        <div class="sakura-petal" style="left:34%; --drift:35px; animation-duration:9s; animation-delay:6s;"></div>
-        <div class="sakura-petal" style="left:50%; --drift:-30px; animation-duration:13s; animation-delay:1.5s;"></div>
-        <div class="sakura-petal" style="left:65%; --drift:25px; animation-duration:10s; animation-delay:4.5s;"></div>
-        <div class="sakura-petal" style="left:80%; --drift:-35px; animation-duration:15s; animation-delay:7s;"></div>
-        <div class="sakura-petal" style="left:92%; --drift:20px; animation-duration:12s; animation-delay:2.5s;"></div>
-    </div>
 
     <!-- ================= ACCUEIL ================= -->
     <div id="page-accueil" class="page active">
