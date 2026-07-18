@@ -975,7 +975,11 @@
         <div class="content-container" style="margin-top: 20px;">
             <h2 class="section-title">Vols</h2>
             <div id="vols-list"></div>
+
+            <h2 class="section-title">Transports</h2>
+            <div id="transports-list"></div>
         </div>
+        <button class="btn-add-float" onclick="openAddTransportModal()"><i class="fa-solid fa-train"></i></button>
     </div>
 
     <!-- ================= PROGRAMME ================= -->
@@ -1231,6 +1235,90 @@
         </div>
     </div>
 
+    <!-- ================= MODAL APERÇU DÉTAILLÉ DU TRANSPORT ================= -->
+    <div class="modal" id="modal-view-transport">
+        <div class="modal-content">
+            <h3 id="view-transport-title">Fiche Trajet</h3>
+            <div id="view-transport-details">
+                <!-- Rempli dynamiquement -->
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-view-transport')">Fermer</button>
+                <button class="btn-modal save" id="btn-trigger-edit-transport" style="background-color: var(--accent-green); color: white;">Modifier</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL TRANSPORT (AJOUT / MODIFICATION) ================= -->
+    <div class="modal" id="modal-transport">
+        <div class="modal-content">
+            <h3 id="transport-modal-title">Ajouter un trajet</h3>
+            <input type="hidden" id="transport-edit-id" value="">
+
+            <div class="input-group">
+                <label>Type de train</label>
+                <select id="transport-type">
+                    <option value="Shinkansen">Shinkansen</option>
+                    <option value="Limited Express">Limited Express</option>
+                    <option value="Train Local">Train Local</option>
+                    <option value="Métro">Métro</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Nom / Numéro du train</label>
+                <input type="text" id="transport-nom" placeholder="Ex: Nozomi 15">
+            </div>
+            <div class="input-group">
+                <label>Date</label>
+                <input type="text" id="transport-date" placeholder="Ex: 3 sept.">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 2;">
+                    <label>Gare de départ</label>
+                    <input type="text" id="transport-dep-gare" placeholder="Ex: Kyoto">
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Heure</label>
+                    <input type="text" id="transport-dep-heure" placeholder="09:15">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Voie / Quai de départ</label>
+                <input type="text" id="transport-dep-voie" placeholder="Ex: Voie 14">
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <div class="input-group" style="flex: 2;">
+                    <label>Gare d'arrivée</label>
+                    <input type="text" id="transport-arr-gare" placeholder="Ex: Tokyo">
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Heure</label>
+                    <input type="text" id="transport-arr-heure" placeholder="11:33">
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Voie / Quai d'arrivée</label>
+                <input type="text" id="transport-arr-voie" placeholder="Ex: Voie 20">
+            </div>
+
+            <div class="input-group">
+                <label>Siège / Voiture</label>
+                <input type="text" id="transport-siege" placeholder="Ex: Voiture 8, Siège 5A">
+            </div>
+            <div class="input-group">
+                <label>Notes</label>
+                <textarea id="transport-notes" rows="2" placeholder="Ex: Réservé via JR Pass"></textarea>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-transport')">Annuler</button>
+                <button class="btn-modal save" onclick="saveTransport()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= MODAL APERÇU ITINÉRAIRE (VISUALISATION) ================= -->
     <div class="modal" id="modal-view-programme">
         <div class="modal-content">
@@ -1448,7 +1536,8 @@
                 { id: 2, titre: "Adresses hôtels", desc: "Osaka — Hotel Namba\nKyoto — Piece Hostel Sanjo\nTokyo — Hotel Gracery Shinjuku" },
                 { id: 3, titre: "JR Pass", desc: "Pass 14 jours activé le 31 août.\nValable Shinkansen (sauf Nozomi/Mizuho)." },
                 { id: 4, titre: "WiFi / Pocket WiFi", desc: "Récupération à l'aéroport KIX (comptoir Ninja WiFi).\nCode routeur : voir pochette." }
-            ]
+            ],
+            transports: []
         };
 
         var appData = JSON.parse(localStorage.getItem('voyage_japon_data')) || defaultData;
@@ -1457,6 +1546,7 @@
         if (!appData.tripTitle) appData.tripTitle = defaultData.tripTitle;
         if (!appData.tripStart) appData.tripStart = defaultData.tripStart;
         if (!appData.tripEnd) appData.tripEnd = defaultData.tripEnd;
+        if (!appData.transports) appData.transports = [];
 
         function saveToLocalStorage() {
             localStorage.setItem('voyage_japon_data', JSON.stringify(appData));
@@ -1470,6 +1560,7 @@
             updateChecklistAddFloat();
             updateCountdown();
             renderVols();
+            renderTransports();
             renderProgramme();
             renderChecklist();
             updateBudgetUI();
@@ -1779,6 +1870,178 @@
                     </div>
                 `;
             });
+        }
+
+        // --- TRANSPORTS (trains) ---
+        const transportIcons = {
+            "Shinkansen": "fa-train",
+            "Limited Express": "fa-train-subway",
+            "Train Local": "fa-train-subway",
+            "Métro": "fa-train-subway"
+        };
+
+        function renderTransports() {
+            const list = document.getElementById('transports-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            if (!appData.transports || appData.transports.length === 0) {
+                list.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem; padding: 4px 5px 10px;">Aucun trajet ajouté pour l'instant.</p>`;
+                return;
+            }
+
+            appData.transports.forEach((t, index) => {
+                const icon = transportIcons[t.type] || 'fa-train';
+                list.innerHTML += `
+                    <div class="card clickable" onclick="viewTransportDetails(${index})">
+                        <button class="delete-btn-round" onclick="event.stopPropagation(); deleteTransport(${index})"><i class="fa-solid fa-trash-can"></i></button>
+                        <div class="card-header-row">
+                            <div class="card-title-group">
+                                <div class="card-icon"><i class="fa-solid ${icon}"></i></div>
+                                <div>
+                                    <div class="card-title">${esc(t.train || t.type)}</div>
+                                    <div class="card-subtitle" style="font-weight: 700; color: var(--accent-green);">${esc(t.type || '')}</div>
+                                </div>
+                            </div>
+                            <span class="card-date">${esc(t.date)}</span>
+                        </div>
+                        <div class="flight-route">
+                            <div class="flight-airport">
+                                <div class="airport-code" style="font-size: 1.2rem;">${esc(t.depStation)}</div>
+                                <div class="airport-city">${esc(t.depTime || '')}</div>
+                            </div>
+                            <div class="flight-line-container">
+                                <div class="flight-line"></div>
+                                <i class="fa-solid ${icon} flight-icon-center"></i>
+                            </div>
+                            <div class="flight-airport right">
+                                <div class="airport-code" style="font-size: 1.2rem;">${esc(t.arrStation)}</div>
+                                <div class="airport-city">${esc(t.arrTime || '')}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function viewTransportDetails(index) {
+            const t = appData.transports[index];
+            if (!t) return;
+
+            document.getElementById('view-transport-title').innerText = `${t.type || 'Trajet'} — ${t.train || ''}`;
+
+            const depVoieHtml = t.depPlatform ? `<div class="flight-meta-pill"><span>Voie de départ</span><span>${esc(t.depPlatform)}</span></div>` : '';
+            const arrVoieHtml = t.arrPlatform ? `<div class="flight-meta-pill"><span>Voie d'arrivée</span><span>${esc(t.arrPlatform)}</span></div>` : '';
+            const seatHtml = t.seat ? `<div class="flight-meta-pill"><span>Siège / Voiture</span><span>${esc(t.seat)}</span></div>` : '';
+            const notesHtml = t.notes ? `<div class="flight-meta-pill"><span>Notes</span><span>${esc(t.notes)}</span></div>` : '';
+
+            const detailsHtml = `
+                <div style="margin-bottom: 20px; font-weight: 600; color: var(--text-muted); font-size: 0.9rem;">
+                    Date : ${esc(t.date)}
+                </div>
+                <div class="flight-detail-segment">
+                    <div class="segment-dot"></div>
+                    <div style="font-weight: 800; font-size: 1.1rem; display: flex; justify-content: space-between;">
+                        <span>${esc(t.depStation)}</span>
+                        <span style="color: var(--accent-green);">${esc(t.depTime || '')}</span>
+                    </div>
+                </div>
+                <div class="flight-detail-segment">
+                    <div class="segment-dot"></div>
+                    <div style="font-weight: 800; font-size: 1.1rem; display: flex; justify-content: space-between;">
+                        <span>${esc(t.arrStation)}</span>
+                        <span style="color: var(--accent-green);">${esc(t.arrTime || '')}</span>
+                    </div>
+                </div>
+                <h4 class="section-title" style="margin-top: 25px;">Infos Logistiques</h4>
+                ${depVoieHtml}
+                ${arrVoieHtml}
+                ${seatHtml}
+                ${notesHtml}
+            `;
+
+            document.getElementById('view-transport-details').innerHTML = detailsHtml;
+
+            document.getElementById('btn-trigger-edit-transport').onclick = function() {
+                closeModal('modal-view-transport');
+                openEditTransportModal(index);
+            };
+
+            openModal('modal-view-transport');
+        }
+
+        function openAddTransportModal() {
+            document.getElementById('transport-modal-title').innerText = "Ajouter un trajet";
+            document.getElementById('transport-edit-id').value = "";
+            document.getElementById('transport-type').value = "Shinkansen";
+            document.getElementById('transport-nom').value = "";
+            document.getElementById('transport-date').value = "";
+            document.getElementById('transport-dep-gare').value = "";
+            document.getElementById('transport-dep-heure').value = "";
+            document.getElementById('transport-dep-voie').value = "";
+            document.getElementById('transport-arr-gare').value = "";
+            document.getElementById('transport-arr-heure').value = "";
+            document.getElementById('transport-arr-voie').value = "";
+            document.getElementById('transport-siege').value = "";
+            document.getElementById('transport-notes').value = "";
+            openModal('modal-transport');
+        }
+
+        function openEditTransportModal(index) {
+            const t = appData.transports[index];
+            if (!t) return;
+            document.getElementById('transport-modal-title').innerText = "Modifier le trajet";
+            document.getElementById('transport-edit-id').value = index;
+            document.getElementById('transport-type').value = t.type || "Shinkansen";
+            document.getElementById('transport-nom').value = t.train || "";
+            document.getElementById('transport-date').value = t.date || "";
+            document.getElementById('transport-dep-gare').value = t.depStation || "";
+            document.getElementById('transport-dep-heure').value = t.depTime || "";
+            document.getElementById('transport-dep-voie').value = t.depPlatform || "";
+            document.getElementById('transport-arr-gare').value = t.arrStation || "";
+            document.getElementById('transport-arr-heure').value = t.arrTime || "";
+            document.getElementById('transport-arr-voie').value = t.arrPlatform || "";
+            document.getElementById('transport-siege').value = t.seat || "";
+            document.getElementById('transport-notes').value = t.notes || "";
+            openModal('modal-transport');
+        }
+
+        function saveTransport() {
+            const editIndex = document.getElementById('transport-edit-id').value;
+            const type = document.getElementById('transport-type').value;
+            const train = document.getElementById('transport-nom').value.trim();
+            const date = document.getElementById('transport-date').value.trim();
+            const depStation = document.getElementById('transport-dep-gare').value.trim();
+            const depTime = document.getElementById('transport-dep-heure').value.trim();
+            const depPlatform = document.getElementById('transport-dep-voie').value.trim();
+            const arrStation = document.getElementById('transport-arr-gare').value.trim();
+            const arrTime = document.getElementById('transport-arr-heure').value.trim();
+            const arrPlatform = document.getElementById('transport-arr-voie').value.trim();
+            const seat = document.getElementById('transport-siege').value.trim();
+            const notes = document.getElementById('transport-notes').value.trim();
+
+            if (!date || !depStation || !arrStation) return;
+
+            if (!appData.transports) appData.transports = [];
+
+            if (editIndex !== "") {
+                const i = parseInt(editIndex);
+                appData.transports[i] = { ...appData.transports[i], type, train, date, depStation, depTime, depPlatform, arrStation, arrTime, arrPlatform, seat, notes };
+            } else {
+                appData.transports.push({ id: Date.now(), type, train, date, depStation, depTime, depPlatform, arrStation, arrTime, arrPlatform, seat, notes });
+            }
+
+            saveToLocalStorage();
+            renderTransports();
+            closeModal('modal-transport');
+        }
+
+        function deleteTransport(index) {
+            if (confirm("Voulez-vous vraiment supprimer ce trajet ?")) {
+                appData.transports.splice(index, 1);
+                saveToLocalStorage();
+                renderTransports();
+            }
         }
 
 // --- PROGRAMME ---
@@ -2199,6 +2462,20 @@
             updateBudgetUI();
         }
 
+        function saveBudget() {
+            const nom = document.getElementById('bud-name').value.trim();
+            const amount = parseFloat(document.getElementById('bud-amount').value);
+            if (!nom || isNaN(amount)) return;
+
+            appData.budget.push({ id: Date.now(), nom: nom, eur: amount });
+            saveToLocalStorage();
+            updateBudgetUI();
+
+            document.getElementById('bud-name').value = '';
+            document.getElementById('bud-amount').value = '';
+            closeModal('modal-budget');
+        }
+
         // --- INFOS ---
         function renderInfos() {
             const list = document.getElementById('infos-list');
@@ -2235,6 +2512,20 @@
                     </div>
                 `;
             });
+        }
+
+        function saveInfo() {
+            const titre = document.getElementById('info-title').value.trim();
+            const desc = document.getElementById('info-desc').value.trim();
+            if (!titre) return;
+
+            appData.infos.push({ id: Date.now(), titre: titre, desc: desc });
+            saveToLocalStorage();
+            renderInfos();
+
+            document.getElementById('info-title').value = '';
+            document.getElementById('info-desc').value = '';
+            closeModal('modal-infos');
         }
 
         function deleteItem(category, id) {
@@ -2305,6 +2596,7 @@ function saveProgramme() {
         window.onload = function() {
             updateCountdown();
             renderVols();
+            renderTransports();
             renderProgramme();
             buildChecklistSelector();
             renderChecklist();
