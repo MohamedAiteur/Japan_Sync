@@ -31,13 +31,13 @@
         #page-checklist { --accent-primary: #b8802c; --card-bg: #fdf8ef; }
         #page-infos { --accent-primary: #e0468a; --card-bg: #f9f3fa; }
 
-        /* Les modals s'ouvrent en dehors des pages dans le HTML : elles reprennent
-           la couleur de la page depuis laquelle elles sont ouvertes via data-page */
-        body[data-page="accueil"] .modal { --accent-primary: #d9678a; --card-bg: #fff6f8; }
-        body[data-page="programme"] .modal { --accent-primary: #d9784f; --card-bg: #fff8f3; }
-        body[data-page="budget"] .modal { --accent-primary: #c94a1f; --card-bg: #fff5f0; }
-        body[data-page="checklist"] .modal { --accent-primary: #b8802c; --card-bg: #fdf8ef; }
-        body[data-page="infos"] .modal { --accent-primary: #e0468a; --card-bg: #f9f3fa; }
+        /* Les modals, la barre de navigation, etc. vivent en dehors des pages dans
+           le HTML : ils reprennent la couleur de la page active via data-page */
+        body[data-page="accueil"] { --accent-primary: #d9678a; --card-bg: #fff6f8; }
+        body[data-page="programme"] { --accent-primary: #d9784f; --card-bg: #fff8f3; }
+        body[data-page="budget"] { --accent-primary: #c94a1f; --card-bg: #fff5f0; }
+        body[data-page="checklist"] { --accent-primary: #b8802c; --card-bg: #fdf8ef; }
+        body[data-page="infos"] { --accent-primary: #e0468a; --card-bg: #f9f3fa; }
 
         * {
             box-sizing: border-box;
@@ -450,7 +450,7 @@
 
         .flight-icon-center {
             position: absolute;
-            background-color: white;
+            background-color: var(--card-bg);
             padding: 0 8px;
             color: #888;
             font-size: 0.85rem;
@@ -470,7 +470,7 @@
             top: 6px;
             bottom: -20px;
             width: 2px;
-            background: repeating-linear-gradient(to bottom, #7d9385, #7d9385 4px, transparent 4px, transparent 8px);
+            background: repeating-linear-gradient(to bottom, var(--accent-primary), var(--accent-primary) 4px, transparent 4px, transparent 8px);
         }
 
         .flight-detail-segment:last-child::before {
@@ -719,7 +719,7 @@
         }
 
         .key {
-            background-color: white;
+            background-color: var(--card-bg);
             border: none;
             border-radius: 12px;
             padding: 18px 0;
@@ -759,7 +759,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 18px;
-            background-color: white;
+            background-color: var(--card-bg);
             border-radius: 15px;
             margin-bottom: 12px;
             position: relative;
@@ -840,7 +840,7 @@
             left: 0;
             right: 0;
             height: 85px;
-            background-color: white;
+            background-color: var(--card-bg);
             border-top: 1px solid #e5e5e5;
             display: flex;
             justify-content: space-around;
@@ -867,14 +867,8 @@
         }
 
         .nav-item.active {
-            color: #7d9385;
+            color: var(--accent-primary);
         }
-
-        body[data-page="accueil"] .nav-item.active { color: #d9678a; }
-        body[data-page="programme"] .nav-item.active { color: #d9784f; }
-        body[data-page="budget"] .nav-item.active { color: #c94a1f; }
-        body[data-page="checklist"] .nav-item.active { color: #b8802c; }
-        body[data-page="infos"] .nav-item.active { color: #e0468a; }
 
         .modal {
             display: none;
