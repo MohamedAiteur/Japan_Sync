@@ -568,17 +568,31 @@
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            padding: 10px 0;
+            padding: 10px 12px;
+            margin: 0 -12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.15s;
         }
 
         .screen-row:first-child {
             border-bottom: 1px solid #333;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .screen-row.active {
+            background-color: rgba(125, 147, 133, 0.18);
+        }
+
+        .screen-row.active .screen-label {
+            color: var(--accent-green);
         }
 
         .screen-label {
             font-size: 1.1rem;
             font-weight: 800;
             color: #666;
+            transition: color 0.15s;
         }
 
         .screen-value {
@@ -1025,11 +1039,11 @@
         </div>
         <div class="content-container">
             <div class="calculator-screen">
-                <div class="screen-row">
+                <div class="screen-row active" id="screen-row-eur" onclick="setActiveCurrency('EUR')">
                     <span class="screen-label">EUR</span>
                     <span class="screen-value" id="calc-eur">0</span>
                 </div>
-                <div class="screen-row">
+                <div class="screen-row" id="screen-row-jpy" onclick="setActiveCurrency('JPY')">
                     <span class="screen-label">JPY</span>
                     <span class="screen-value" id="calc-jpy">¥ 0</span>
                 </div>
@@ -2521,13 +2535,30 @@
         }
 
         // --- BUDGET ---
-        let currentEurInput = "0";
+        let currentInput = "0";
+        let activeCurrency = 'EUR'; // 'EUR' ou 'JPY' — le champ dans lequel on tape
+
+        function setActiveCurrency(currency) {
+            if (activeCurrency === currency) return;
+            activeCurrency = currency;
+            currentInput = "0";
+            document.getElementById('screen-row-eur').classList.toggle('active', currency === 'EUR');
+            document.getElementById('screen-row-jpy').classList.toggle('active', currency === 'JPY');
+            updateBudgetUI();
+        }
 
         function updateBudgetUI() {
-            document.getElementById('calc-eur').innerText = formatNumberString(currentEurInput);
-            const valEur = parseFloat(currentEurInput) || 0;
-            const valJpy = Math.round(valEur * TAUX_CHANGE);
-            document.getElementById('calc-jpy').innerText = '¥ ' + valJpy.toLocaleString('fr-FR');
+            if (activeCurrency === 'EUR') {
+                const valEur = parseFloat(currentInput) || 0;
+                const valJpy = Math.round(valEur * TAUX_CHANGE);
+                document.getElementById('calc-eur').innerText = formatNumberString(currentInput);
+                document.getElementById('calc-jpy').innerText = '¥ ' + valJpy.toLocaleString('fr-FR');
+            } else {
+                const valJpy = parseFloat(currentInput) || 0;
+                const valEur = TAUX_CHANGE ? valJpy / TAUX_CHANGE : 0;
+                document.getElementById('calc-jpy').innerText = '¥ ' + formatNumberString(currentInput);
+                document.getElementById('calc-eur').innerText = valEur.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+            }
 
             const list = document.getElementById('expenses-list');
             list.innerHTML = '';
@@ -2560,17 +2591,17 @@
 
         function pressKey(key) {
             if (key === 'delete') {
-                currentEurInput = currentEurInput.slice(0, -1);
-                if (currentEurInput === "" || currentEurInput === "-") currentEurInput = "0";
+                currentInput = currentInput.slice(0, -1);
+                if (currentInput === "" || currentInput === "-") currentInput = "0";
             } else if (key === '.') {
-                if (!currentEurInput.includes('.')) {
-                    currentEurInput += '.';
+                if (!currentInput.includes('.')) {
+                    currentInput += '.';
                 }
             } else {
-                if (currentEurInput === "0") {
-                    currentEurInput = key;
+                if (currentInput === "0") {
+                    currentInput = key;
                 } else {
-                    currentEurInput += key;
+                    currentInput += key;
                 }
             }
             updateBudgetUI();
