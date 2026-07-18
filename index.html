@@ -1361,6 +1361,25 @@
         </div>
     </div>
 
+    <!-- ================= MODAL JOURNÉE (PROGRAMMATION D'UN JOUR) ================= -->
+    <div class="modal" id="modal-view-day">
+        <div class="modal-content">
+            <h3 id="view-day-title">Journée</h3>
+            <div id="view-day-activites">
+                <!-- Rempli dynamiquement -->
+            </div>
+            <div style="display:flex; gap:8px; margin-top:14px; flex-wrap: wrap;">
+                <input type="text" id="day-activite-heure" placeholder="Heure (ex: 08h00)" style="flex:1; min-width:80px;">
+                <input type="text" id="day-activite-texte" placeholder="Ex: Restaurant" style="flex:2; min-width:120px;">
+                <input type="text" id="day-activite-lien" placeholder="Lien (ex: Google Maps)" style="flex:2; min-width:120px;">
+                <button type="button" id="day-activite-add-btn" style="flex:0 0 auto; border:none; background-color: var(--accent-green); color:white; border-radius:10px; padding:0 16px; font-size:1.2rem; cursor:pointer;">+</button>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-view-day')">Retour</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= MODAL PROGRAMME (ÉDITION) ================= -->
     <div class="modal" id="modal-programme">
         <div class="modal-content">
@@ -1383,18 +1402,6 @@
                 <div class="input-group" style="flex: 1;">
                     <label>Date de fin</label>
                     <input type="text" id="prog-date-end" placeholder="Ex: 6 sept.">
-                </div>
-            </div>
-
-            <div class="input-group">
-                <label>Activités</label>
-                <div id="prog-activites-list"></div>
-                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap: wrap;">
-                    <input type="text" id="prog-activite-date" placeholder="Date (ex: 3 sept.)" style="flex:1; min-width:90px;">
-                    <input type="text" id="prog-activite-heure" placeholder="Heure (ex: 08h00)" style="flex:1; min-width:80px;">
-                    <input type="text" id="prog-activite-texte" placeholder="Ex: Restaurant" style="flex:2; min-width:120px;">
-                    <input type="text" id="prog-activite-lien" placeholder="Lien (ex: Google Maps)" style="flex:2; min-width:120px;">
-                    <button type="button" onclick="addActiviteTemp()" style="flex:0 0 auto; border:none; background-color: var(--accent-green); color:white; border-radius:10px; padding:0 16px; font-size:1.2rem; cursor:pointer;">+</button>
                 </div>
             </div>
 
@@ -1551,9 +1558,9 @@
                 }
             ],
             programme: [
-                { id: 1, ville: "Osaka", dateStart: "31 août", dateEnd: "1 sept.", hotel: "Hotel Namba", maps: "", activites: [] },
-                { id: 2, ville: "Kyoto", dateStart: "3 sept.", dateEnd: "7 sept.", hotel: "Piece Hostel Sanjo", maps: "", activites: [] },
-                { id: 3, ville: "Tokyo", dateStart: "8 sept.", dateEnd: "14 sept.", hotel: "Hotel Gracery Shinjuku", maps: "", activites: [] }
+                { id: 1, ville: "Osaka", dateStart: "31 août", dateEnd: "1 sept.", hotel: "Hotel Namba", maps: "", jours: [], activites: [] },
+                { id: 2, ville: "Kyoto", dateStart: "3 sept.", dateEnd: "7 sept.", hotel: "Piece Hostel Sanjo", maps: "", jours: [], activites: [] },
+                { id: 3, ville: "Tokyo", dateStart: "8 sept.", dateEnd: "14 sept.", hotel: "Hotel Gracery Shinjuku", maps: "", jours: [], activites: [] }
             ],
             checklist: [
                 { id: 1, categorie: "ÉLECTRONIQUE", texte: "Adaptateur secteur", checked: false },
@@ -1584,37 +1591,55 @@
 
         // Migre l'ancien format (une entrée par jour) vers le nouveau format
         // (une entrée par ville avec une plage de dates), en regroupant les
-        // anciennes entrées par ville et en conservant leurs activités.
+        // anciennes entrées par ville et en conservant leurs activités et
+        // la liste des jours (une entrée = un jour, avec ou sans activité).
         function migrateLegacyProgramme() {
             const isLegacy = appData.programme.some(p => p.dateStart === undefined);
-            if (!isLegacy || appData.programme.length === 0) return;
-
-            const groups = [];
-            const groupByVille = {};
-            appData.programme.forEach(prog => {
-                if (!groupByVille[prog.ville]) {
-                    const group = { id: prog.id, ville: prog.ville, hotel: prog.hotel, maps: prog.maps || '', activites: [], firstDate: prog.date, lastDate: prog.date };
-                    groupByVille[prog.ville] = group;
-                    groups.push(group);
-                }
-                const group = groupByVille[prog.ville];
-                group.lastDate = prog.date;
-                (prog.activites || []).forEach(act => {
-                    group.activites.push({ id: act.id || (Date.now() + Math.floor(Math.random() * 1000)), date: prog.date, heure: act.heure, texte: act.texte, lien: act.lien || '' });
+            if (isLegacy && appData.programme.length > 0) {
+                const groups = [];
+                const groupByVille = {};
+                appData.programme.forEach(prog => {
+                    if (!groupByVille[prog.ville]) {
+                        const group = { id: prog.id, ville: prog.ville, hotel: prog.hotel, maps: prog.maps || '', activites: [], jours: [], firstDate: prog.date, lastDate: prog.date };
+                        groupByVille[prog.ville] = group;
+                        groups.push(group);
+                    }
+                    const group = groupByVille[prog.ville];
+                    group.lastDate = prog.date;
+                    if (!group.jours.includes(prog.date)) group.jours.push(prog.date);
+                    (prog.activites || []).forEach(act => {
+                        group.activites.push({ id: act.id || (Date.now() + Math.floor(Math.random() * 1000)), date: prog.date, heure: act.heure, texte: act.texte, lien: act.lien || '' });
+                    });
                 });
+
+                appData.programme = groups.map(g => ({
+                    id: g.id,
+                    ville: g.ville,
+                    dateStart: g.firstDate,
+                    dateEnd: g.lastDate,
+                    hotel: g.hotel,
+                    maps: g.maps,
+                    jours: g.jours,
+                    activites: g.activites
+                }));
+            }
+
+            // Complète le champ "jours" pour les destinations qui n'ont pas encore
+            // ce champ (déjà passées au format "une carte par destination" avant
+            // que la programmation jour par jour n'existe).
+            let changed = isLegacy;
+            appData.programme.forEach(prog => {
+                if (!prog.jours) {
+                    const joursSet = [];
+                    (prog.activites || []).forEach(act => {
+                        if (!joursSet.includes(act.date)) joursSet.push(act.date);
+                    });
+                    prog.jours = joursSet;
+                    changed = true;
+                }
             });
 
-            appData.programme = groups.map(g => ({
-                id: g.id,
-                ville: g.ville,
-                dateStart: g.firstDate,
-                dateEnd: g.lastDate,
-                hotel: g.hotel,
-                maps: g.maps,
-                activites: g.activites
-            }));
-
-            saveToLocalStorage();
+            if (changed) saveToLocalStorage();
         }
         migrateLegacyProgramme();
         window.migrateLegacyProgramme = migrateLegacyProgramme;
@@ -2145,46 +2170,6 @@
         }
 
 // --- PROGRAMME ---
-        let tempActivites = [];
-
-        function renderActivitesTempList() {
-            const container = document.getElementById('prog-activites-list');
-            container.innerHTML = '';
-            tempActivites.forEach((act, i) => {
-                const actUrl = safeUrl(act.lien);
-                const linkDisplay = actUrl ? `<a href="${actUrl}" target="_blank" rel="noopener" class="activity-link-btn" title="${actUrl}">📍</a>` : `<span class="activity-link-btn" style="background:#ddd; cursor:default; color:transparent;">📍</span>`;
-                container.innerHTML += `
-                    <div class="activity-row">
-                        <span class="activity-time" style="min-width:70px;">${esc(act.date)} ${esc(act.heure)}</span>
-                        <span class="activity-text">${esc(act.texte)}</span>
-                        ${linkDisplay}
-                        <button type="button" class="activity-remove" onclick="removeActiviteTemp(${i})"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                `;
-            });
-        }
-
-        function addActiviteTemp() {
-            const date = document.getElementById('prog-activite-date').value.trim();
-            const heure = document.getElementById('prog-activite-heure').value.trim();
-            const texte = document.getElementById('prog-activite-texte').value.trim();
-            const lien = document.getElementById('prog-activite-lien').value.trim();
-            if (date && heure && texte) {
-                tempActivites.push({ id: Date.now() + Math.floor(Math.random() * 1000), date: date, heure: heure, texte: texte, lien: lien });
-                tempActivites.sort((a, b) => (a.date + ' ' + a.heure).localeCompare(b.date + ' ' + b.heure));
-                document.getElementById('prog-activite-date').value = '';
-                document.getElementById('prog-activite-heure').value = '';
-                document.getElementById('prog-activite-texte').value = '';
-                document.getElementById('prog-activite-lien').value = '';
-                renderActivitesTempList();
-            }
-        }
-
-        function removeActiviteTemp(index) {
-            tempActivites.splice(index, 1);
-            renderActivitesTempList();
-        }
-
         function openAddProgrammeModal() {
             document.getElementById('prog-modal-title').innerText = "Ajouter une destination";
             document.getElementById('prog-edit-id').value = "";
@@ -2193,8 +2178,6 @@
             document.getElementById('prog-date-start').value = "";
             document.getElementById('prog-date-end').value = "";
             document.getElementById('prog-maps').value = "";
-            tempActivites = [];
-            renderActivitesTempList();
             openModal('modal-programme');
         }
 
@@ -2208,10 +2191,35 @@
                 document.getElementById('prog-date-start').value = item.dateStart;
                 document.getElementById('prog-date-end').value = item.dateEnd;
                 document.getElementById('prog-maps').value = item.maps || "";
-                tempActivites = item.activites ? JSON.parse(JSON.stringify(item.activites)) : [];
-                renderActivitesTempList();
                 openModal('modal-programme');
             }
+        }
+
+        function addDayToDestination(progId) {
+            const input = document.getElementById('new-day-date-' + progId);
+            if (!input) return;
+            const date = input.value.trim();
+            if (!date) return;
+            const prog = appData.programme.find(p => p.id === progId);
+            if (!prog) return;
+            if (!prog.jours) prog.jours = [];
+            if (!prog.jours.includes(date)) {
+                prog.jours.push(date);
+                saveToLocalStorage();
+            }
+            input.value = '';
+            viewProgrammeDetails(progId);
+            viewProgrammeDay(progId, date);
+        }
+
+        function deleteDay(progId, date) {
+            if (!confirm(`Supprimer la journée du ${date} et ses activités ?`)) return;
+            const prog = appData.programme.find(p => p.id === progId);
+            if (!prog) return;
+            prog.jours = (prog.jours || []).filter(d => d !== date);
+            prog.activites = (prog.activites || []).filter(a => a.date !== date);
+            saveToLocalStorage();
+            viewProgrammeDetails(progId);
         }
 
         function viewProgrammeDetails(id) {
@@ -2221,33 +2229,27 @@
             const dateRange = prog.dateStart === prog.dateEnd ? prog.dateStart : `${prog.dateStart} — ${prog.dateEnd}`;
             document.getElementById('view-prog-title').innerText = `${prog.ville} — ${dateRange}`;
 
-            const activites = (prog.activites || []).slice().sort((a, b) => (a.date + ' ' + a.heure).localeCompare(b.date + ' ' + b.heure));
-            let activitesHtml = '';
-            let lastDateShown = null;
-            activites.forEach((act, i) => {
-                const actUrl = safeUrl(act.lien);
-                const linkBtn = actUrl
-                    ? `<a href="${actUrl}" target="_blank" rel="noopener" class="activity-link-btn" style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--accent-green); color:white; text-decoration:none; font-size:0.75rem; flex-shrink:0;" title="Voir sur la carte : ${actUrl}">📍</a>`
-                    : `<span style="display:inline-block; width:26px; flex-shrink:0;"></span>`;
-                if (act.date !== lastDateShown) {
-                    activitesHtml += `<div class="jour-checklist-title" style="margin-top: 14px;">${esc(act.date)}</div>`;
-                    lastDateShown = act.date;
-                }
-                activitesHtml += `
-                    <div class="flight-detail-segment" style="display:flex; align-items:flex-start; gap:8px;">
-                        <div class="segment-dot" style="margin-top:4px; flex-shrink:0;"></div>
-                        <div style="flex:1;">
-                            <div style="font-weight: 800; font-size: 1.05rem;">${esc(act.heure)}</div>
-                            <div style="font-size: 0.95rem; color: #444; margin-top: 2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                                <span style="flex:1; min-width:0;">${esc(act.texte)}</span>
-                                ${linkBtn}
-                            </div>
+            if (!prog.jours) prog.jours = [];
+            const jours = prog.jours.slice().sort();
+
+            let joursHtml = '';
+            jours.forEach(date => {
+                const count = (prog.activites || []).filter(a => a.date === date).length;
+                joursHtml += `
+                    <div class="card clickable" style="padding: 14px 18px; margin-bottom: 10px; display:flex; justify-content:space-between; align-items:center;" onclick="viewProgrammeDay(${prog.id}, '${esc(date)}')">
+                        <div>
+                            <div style="font-weight: 800; font-size: 1.05rem;">${esc(date)}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">${count} activité${count > 1 ? 's' : ''}</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <i class="fa-solid fa-chevron-right" style="color:#ccc;"></i>
+                            <button onclick="event.stopPropagation(); deleteDay(${prog.id}, '${esc(date)}')" style="background:none; border:none; color:#ccc; cursor:pointer; font-size:0.9rem;"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </div>
                 `;
             });
-            if (activites.length === 0) {
-                activitesHtml = `<p style="color: var(--text-muted); font-size: 0.9rem;">Aucune activité renseignée pour cette étape.</p>`;
+            if (jours.length === 0) {
+                joursHtml = `<p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Aucune journée programmée pour l'instant.</p>`;
             }
 
             const progMapsUrl = safeUrl(prog.maps);
@@ -2286,8 +2288,12 @@
                 <div class="card-subtitle" style="display:flex; align-items:center; gap: 8px; margin-bottom: 20px;">
                     <i class="fa-solid fa-bed" style="color: #bbb;"></i> ${esc(prog.hotel)}
                 </div>
-                <h4 class="section-title" style="margin-top: 0;">Activités</h4>
-                ${activitesHtml}
+                <h4 class="section-title" style="margin-top: 0;">Journées</h4>
+                ${joursHtml}
+                <div class="jour-checklist-add-row">
+                    <input type="text" id="new-day-date-${prog.id}" placeholder="Ajouter un jour (ex: 2 sept.)">
+                    <button onclick="addDayToDestination(${prog.id})">+</button>
+                </div>
                 ${mapsHtml}
                 ${jourCheckSection}
             `;
@@ -2298,6 +2304,75 @@
             };
 
             openModal('modal-view-programme');
+        }
+
+        // --- Programmation d'une journée précise ---
+        function viewProgrammeDay(progId, date) {
+            const prog = appData.programme.find(p => p.id === progId);
+            if (!prog) return;
+
+            document.getElementById('view-day-title').innerText = `${prog.ville} — ${date}`;
+
+            renderDayActivites(progId, date);
+
+            document.getElementById('day-activite-add-btn').onclick = function() {
+                const heure = document.getElementById('day-activite-heure').value.trim();
+                const texte = document.getElementById('day-activite-texte').value.trim();
+                const lien = document.getElementById('day-activite-lien').value.trim();
+                if (!heure || !texte) return;
+                if (!prog.activites) prog.activites = [];
+                prog.activites.push({ id: Date.now() + Math.floor(Math.random() * 1000), date: date, heure: heure, texte: texte, lien: lien });
+                saveToLocalStorage();
+                document.getElementById('day-activite-heure').value = '';
+                document.getElementById('day-activite-texte').value = '';
+                document.getElementById('day-activite-lien').value = '';
+                renderDayActivites(progId, date);
+                viewProgrammeDetails(progId);
+            };
+
+            openModal('modal-view-day');
+        }
+
+        function renderDayActivites(progId, date) {
+            const prog = appData.programme.find(p => p.id === progId);
+            if (!prog) return;
+            const activites = (prog.activites || []).filter(a => a.date === date).sort((a, b) => a.heure.localeCompare(b.heure));
+
+            let html = '';
+            activites.forEach(act => {
+                const actUrl = safeUrl(act.lien);
+                const linkBtn = actUrl
+                    ? `<a href="${actUrl}" target="_blank" rel="noopener" class="activity-link-btn" style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--accent-green); color:white; text-decoration:none; font-size:0.75rem; flex-shrink:0;" title="Voir sur la carte : ${actUrl}">📍</a>`
+                    : `<span style="display:inline-block; width:26px; flex-shrink:0;"></span>`;
+                html += `
+                    <div class="flight-detail-segment" style="display:flex; align-items:flex-start; gap:8px;">
+                        <div class="segment-dot" style="margin-top:4px; flex-shrink:0;"></div>
+                        <div style="flex:1;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div style="font-weight: 800; font-size: 1.05rem;">${esc(act.heure)}</div>
+                                <button onclick="deleteDayActivite(${progId}, '${esc(date)}', ${act.id})" style="background:none; border:none; color:#ccc; cursor:pointer; font-size:0.9rem;"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div style="font-size: 0.95rem; color: #444; margin-top: 2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                <span style="flex:1; min-width:0;">${esc(act.texte)}</span>
+                                ${linkBtn}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            if (activites.length === 0) {
+                html = `<p style="color: var(--text-muted); font-size: 0.9rem;">Aucune activité pour cette journée pour l'instant.</p>`;
+            }
+            document.getElementById('view-day-activites').innerHTML = html;
+        }
+
+        function deleteDayActivite(progId, date, activiteId) {
+            const prog = appData.programme.find(p => p.id === progId);
+            if (!prog) return;
+            prog.activites = (prog.activites || []).filter(a => a.id !== activiteId);
+            saveToLocalStorage();
+            renderDayActivites(progId, date);
+            viewProgrammeDetails(progId);
         }
 
         function renderProgramme() {
@@ -2676,7 +2751,6 @@ function saveProgramme() {
             const dateStart = document.getElementById('prog-date-start').value;
             const dateEnd = document.getElementById('prog-date-end').value;
             const maps = document.getElementById('prog-maps').value;
-            const activites = JSON.parse(JSON.stringify(tempActivites));
 
             if (ville && hotel && dateStart && dateEnd) {
                 if (editId) {
@@ -2686,7 +2760,6 @@ function saveProgramme() {
                         item.hotel = hotel;
                         item.dateStart = dateStart;
                         item.dateEnd = dateEnd;
-                        item.activites = activites;
                         item.maps = maps;
                     }
                 } else {
@@ -2696,15 +2769,15 @@ function saveProgramme() {
                         hotel: hotel,
                         dateStart: dateStart,
                         dateEnd: dateEnd,
-                        activites: activites,
-                        maps: maps
+                        maps: maps,
+                        jours: [],
+                        activites: []
                     });
                 }
 
                 saveToLocalStorage();
                 renderProgramme();
                 closeModal('modal-programme');
-                tempActivites = [];
             }
         }
 
