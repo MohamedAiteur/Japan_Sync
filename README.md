@@ -1,4 +1,4 @@
-<img width="645" height="1398" alt="imagesscreen1" src="https://github.com/user-attachments/assets/7ae70190-9373-4f6a-b2f2-206a88ab2481" /># 🗼 Japan_Sync
+# 🗼 Japan_Sync
 
 Un guide de voyage numérique et interactif conçu pour planifier un itinéraire complet de 25 jours au Japon (Tokyo, Kyoto, Osaka). L'application propose une interface moderne, fluide et responsive pour suivre le programme au jour le jour.
 
