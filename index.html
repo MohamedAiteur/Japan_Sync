@@ -2949,11 +2949,12 @@
         }
 
         function buildRouteEmbedUrl(origin, destination) {
-            return `https://www.google.com/maps?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(destination)}&output=embed`;
+            // dirflg=w force l'affichage à pied plutôt qu'en voiture par défaut
+            return `https://www.google.com/maps?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(destination)}&dirflg=w&output=embed`;
         }
 
         function buildDirectionsUrl(destination, origin) {
-            let url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+            let url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=walking`;
             if (origin) url += `&origin=${encodeURIComponent(origin)}`;
             return url;
         }
