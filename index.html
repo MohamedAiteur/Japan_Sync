@@ -3069,8 +3069,14 @@
                 clearTimeout(timeout);
                 if (!res.ok) throw new Error('proxy error');
                 const data = await res.json();
+                // maps.app.goo.gl est un Firebase Dynamic Link : la redirection finale
+                // n'est pas toujours un simple 3xx HTTP (souvent une page intermédiaire
+                // qui redirige en JS). On essaie donc d'abord l'URL finale suivie par le
+                // proxy, puis en repli on cherche des coordonnées directement dans le
+                // HTML de cette page (souvent présentes dans un lien de secours ou une
+                // balise meta destinée aux robots/navigateurs sans JS).
                 const finalUrl = data && data.status && data.status.url;
-                const coords = extractLatLng(finalUrl);
+                const coords = extractLatLng(finalUrl) || extractLatLng(data && data.contents);
                 resolvedLinkCache[key] = coords;
                 return coords;
             } catch (e) {
