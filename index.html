@@ -2940,7 +2940,9 @@
 
         // --- CARTE & ADRESSES (sans clé API — iframe Google Maps publique) ---
         let mapOrigin = '';
+        let mapOriginLink = '';
         let mapDestination = '';
+        let mapDestinationLink = '';
 
         function buildMapEmbedUrl(query) {
             return `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
@@ -2956,8 +2958,24 @@
             return url;
         }
 
+        // Essaie d'extraire des coordonnées GPS d'un lien Google Maps déjà collé
+        // (ex: .../@34.6656,135.5006,17z/... ou !3d..!4d.. ou ?q=lat,lng) pour
+        // pointer sur le lieu exact plutôt que de re-chercher par son nom.
+        function extractLatLng(mapsUrl) {
+            if (!mapsUrl) return null;
+            let m = mapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (m) return `${m[1]},${m[2]}`;
+            m = mapsUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+            if (m) return `${m[1]},${m[2]}`;
+            m = mapsUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+            if (m) return `${m[1]},${m[2]}`;
+            return null;
+        }
+
         // Recalcule la carte : trajet si hôtel + destination sont choisis,
-        // sinon un simple point, sinon une vue d'ensemble du Japon.
+        // sinon un simple point, sinon une vue d'ensemble du Japon. Pour un
+        // point unique, le bouton "Itinéraire" ouvre le lien Maps exact
+        // enregistré plutôt qu'une recherche par nom, s'il existe.
         function refreshMapEmbed() {
             const iframe = document.getElementById('map-embed-iframe');
             const link = document.getElementById('map-directions-link');
@@ -2968,10 +2986,10 @@
                 if (link) link.href = buildDirectionsUrl(mapDestination, mapOrigin);
             } else if (mapDestination) {
                 iframe.src = buildMapEmbedUrl(mapDestination);
-                if (link) link.href = buildDirectionsUrl(mapDestination);
+                if (link) link.href = mapDestinationLink || buildDirectionsUrl(mapDestination);
             } else if (mapOrigin) {
                 iframe.src = buildMapEmbedUrl(mapOrigin);
-                if (link) link.href = buildDirectionsUrl(mapOrigin);
+                if (link) link.href = mapOriginLink || buildDirectionsUrl(mapOrigin);
             } else {
                 iframe.src = buildMapEmbedUrl('Japon');
                 if (link) link.href = '#';
@@ -2980,13 +2998,17 @@
 
         function updateMapFromHotelSelect() {
             const select = document.getElementById('map-hotel-select');
+            const opt = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
             mapOrigin = select ? select.value : '';
+            mapOriginLink = opt ? (opt.dataset.link || '') : '';
             refreshMapEmbed();
         }
 
         function updateMapFromItinerarySelect() {
             const select = document.getElementById('map-itinerary-select');
+            const opt = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
             mapDestination = select ? select.value : '';
+            mapDestinationLink = opt ? (opt.dataset.link || '') : '';
             if (mapDestination) {
                 const addressInput = document.getElementById('map-address-input');
                 if (addressInput) addressInput.value = '';
@@ -2999,6 +3021,7 @@
             const query = input ? input.value.trim() : '';
             if (query) {
                 mapDestination = query;
+                mapDestinationLink = '';
                 const itSelect = document.getElementById('map-itinerary-select');
                 if (itSelect) itSelect.value = '';
                 refreshMapEmbed();
@@ -3012,23 +3035,28 @@
 
             let html = '<option value="">-- Choisir une destination --</option>';
             (appData.programme || []).forEach(prog => {
-                const query = `${prog.hotel}, ${prog.ville}, Japon`;
-                html += `<option value="${esc(query)}">${esc(prog.ville)} — ${esc(prog.hotel)}</option>`;
+                const nameQuery = `${prog.hotel}, ${prog.ville}, Japon`;
+                const rawLink = safeUrl(prog.maps);
+                const query = extractLatLng(rawLink) || nameQuery;
+                html += `<option value="${esc(query)}" data-link="${esc(rawLink)}">${esc(prog.ville)} — ${esc(prog.hotel)}</option>`;
             });
             select.innerHTML = html;
 
             if (previousValue && [...select.options].some(o => o.value === previousValue)) {
                 select.value = previousValue;
                 mapOrigin = previousValue;
+                mapOriginLink = select.options[select.selectedIndex].dataset.link || '';
             } else if (!mapOrigin && appData.programme && appData.programme.length > 0) {
-                select.value = select.options[1].value;
+                select.selectedIndex = 1;
                 mapOrigin = select.value;
+                mapOriginLink = select.options[1].dataset.link || '';
             }
             refreshMapEmbed();
         }
 
         // Liste toutes les activités déjà renseignées dans Itinéraire (avec heure et
         // journée) pour pouvoir choisir directement une destination sans la retaper.
+        // Utilise le lien Google Maps propre à l'activité quand il existe.
         function populateItineraryMapSelect() {
             const select = document.getElementById('map-itinerary-select');
             if (!select) return;
@@ -3038,14 +3066,17 @@
             (appData.programme || []).forEach(prog => {
                 const activites = (prog.activites || []).slice().sort((a, b) => (a.date + ' ' + a.heure).localeCompare(b.date + ' ' + b.heure));
                 activites.forEach(act => {
-                    const query = `${act.texte}, ${prog.ville}, Japon`;
-                    html += `<option value="${esc(query)}">${esc(prog.ville)} · ${esc(act.date)} ${esc(act.heure)} — ${esc(act.texte)}</option>`;
+                    const nameQuery = `${act.texte}, ${prog.ville}, Japon`;
+                    const rawLink = safeUrl(act.lien);
+                    const query = extractLatLng(rawLink) || nameQuery;
+                    html += `<option value="${esc(query)}" data-link="${esc(rawLink)}">${esc(prog.ville)} · ${esc(act.date)} ${esc(act.heure)} — ${esc(act.texte)}</option>`;
                 });
             });
             select.innerHTML = html;
 
             if (previousValue && [...select.options].some(o => o.value === previousValue)) {
                 select.value = previousValue;
+                mapDestinationLink = select.options[select.selectedIndex].dataset.link || '';
             }
         }
 
