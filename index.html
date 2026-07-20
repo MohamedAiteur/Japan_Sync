@@ -3308,6 +3308,47 @@
         }
 
         let expandedDays = {};
+        let editingDay = null; // "progId|date" de la journée en cours de modification, ou null
+
+        function startEditDay(progId, date) {
+            if (!requireEditor()) return;
+            editingDay = progId + '|' + date;
+            renderDestinationDayBar(progId);
+        }
+
+        function cancelEditDay(progId) {
+            editingDay = null;
+            renderDestinationDayBar(progId);
+        }
+
+        function saveEditDay(progId, oldDate) {
+            if (!requireEditor()) return;
+            const idSuffix = progId + '_' + safeId(oldDate);
+            const input = document.getElementById('edit-day-date-' + idSuffix);
+            if (!input) return;
+            const newDate = input.value.trim();
+            if (!newDate) return;
+            const prog = appData.programme.find(p => p.id === progId);
+            if (!prog) return;
+
+            if (newDate !== oldDate) {
+                if ((prog.jours || []).includes(newDate)) {
+                    alert("Cette date existe déjà pour cette destination.");
+                    return;
+                }
+                prog.jours = (prog.jours || []).map(d => d === oldDate ? newDate : d);
+                (prog.activites || []).forEach(a => { if (a.date === oldDate) a.date = newDate; });
+                const oldKey = progId + '|' + oldDate;
+                const newKey = progId + '|' + newDate;
+                if (oldKey in expandedDays) {
+                    expandedDays[newKey] = expandedDays[oldKey];
+                    delete expandedDays[oldKey];
+                }
+            }
+            saveToLocalStorage();
+            editingDay = null;
+            renderDestinationDayBar(progId);
+        }
 
         function toggleDayExpand(progId, date) {
             const key = progId + '|' + date;
@@ -3378,7 +3419,15 @@
             const prog = appData.programme.find(p => p.id === progId);
             if (!prog) return;
             if (!prog.jours) prog.jours = [];
-            const jours = prog.jours.slice().sort();
+            const year = tripYear();
+            const jours = prog.jours.slice().sort((a, b) => {
+                const da = parseFrenchShortDate(a, year);
+                const db = parseFrenchShortDate(b, year);
+                if (da && db) return da - db;
+                if (da) return -1;
+                if (db) return 1;
+                return a.localeCompare(b);
+            });
 
             let joursHtml = '';
             if (jours.length === 0) {
@@ -3439,15 +3488,26 @@
                         activitesHtml = `<p style="color: var(--text-muted); font-size: 0.85rem;">Aucune activité pour cette journée pour l'instant.</p>`;
                     }
 
-                    joursHtml += `
-                        <div style="border: 1.5px solid #eee; border-radius: 14px; overflow: hidden; margin-bottom: 10px;">
-                            <div class="jour-checklist-item" style="cursor:pointer; border-bottom:none; padding: 12px 14px;" onclick="event.stopPropagation(); toggleDayExpand(${progId}, '${esc(date)}')">
+                    const dayHeaderHtml = editingDay === key ? `
+                                <div style="flex:1; display:flex; gap:8px; align-items:center;" onclick="event.stopPropagation();">
+                                    <input type="text" id="edit-day-date-${idSuffix}" value="${esc(date)}" placeholder="Ex: 2 sept." style="flex:1; padding:7px 10px; border:1.5px solid var(--accent-primary); border-radius:8px; font-size:0.9rem;">
+                                    <button onclick="saveEditDay(${progId}, '${esc(date)}')" style="padding:7px 12px; border:none; border-radius:8px; background:var(--accent-primary); color:white; font-weight:700; cursor:pointer; font-size:0.85rem;">OK</button>
+                                    <button onclick="cancelEditDay(${progId})" style="padding:7px 12px; border:none; border-radius:8px; background:#f2f2f2; color:#333; font-weight:700; cursor:pointer; font-size:0.85rem;">✕</button>
+                                </div>
+                            ` : `
                                 <div style="flex:1;">
                                     <div style="font-weight: 700; font-size: 0.95rem;">${esc(date)}</div>
                                     <div style="font-size: 0.8rem; color: var(--text-muted);">${count} activité${count > 1 ? 's' : ''}</div>
                                 </div>
+                                <button onclick="event.stopPropagation(); startEditDay(${progId}, '${esc(date)}')" style="background:none; border:none; color:#bbb; cursor:pointer; font-size:0.85rem;"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button onclick="event.stopPropagation(); deleteDay(${progId}, '${esc(date)}')" style="background:none; border:none; color:#ccc; cursor:pointer; font-size:0.9rem;"><i class="fa-solid fa-trash-can"></i></button>
                                 <i class="fa-solid fa-chevron-${dayIsExpanded ? 'up' : 'down'}" style="color:#ccc; font-size:0.85rem;"></i>
+                            `;
+
+                    joursHtml += `
+                        <div style="border: 1.5px solid #eee; border-radius: 14px; overflow: hidden; margin-bottom: 10px;">
+                            <div class="jour-checklist-item" style="cursor:pointer; border-bottom:none; padding: 12px 14px;" onclick="event.stopPropagation(); toggleDayExpand(${progId}, '${esc(date)}')">
+                                ${dayHeaderHtml}
                             </div>
                             <div style="display: ${dayIsExpanded ? 'block' : 'none'}; padding: 0 14px 14px;">
                                 ${activitesHtml}
