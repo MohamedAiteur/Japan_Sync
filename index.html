@@ -892,6 +892,49 @@
             text-overflow: ellipsis;
         }
 
+        .people-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-primary);
+            color: white;
+            padding: 6px 6px 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .people-chip button {
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.7rem;
+            line-height: 1;
+        }
+
+        .payeur-toggle-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1.5px solid #ddd;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .payeur-toggle-chip.selected {
+            border-color: var(--accent-primary);
+            background: var(--accent-primary);
+            color: white;
+        }
+
         .btn-add-float {
             position: fixed;
             bottom: 105px;
@@ -1372,6 +1415,15 @@
                 <button class="key" onclick="pressKey('.')">.</button>
                 <button class="key" onclick="pressKey('0')">0</button>
                 <button class="key" onclick="pressKey('delete')"><i class="fa-solid fa-delete-left"></i></button>
+            </div>
+
+            <div class="card" style="padding:14px 16px; margin-bottom:16px;">
+                <div class="section-title" style="margin-bottom:8px;">Qui participe aux dépenses ?</div>
+                <div id="budget-people-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="budget-people-input" placeholder="Ajouter un prénom..." style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #ddd; font-size:0.95rem;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBudgetPerson();}">
+                    <button type="button" onclick="addBudgetPerson()" style="border:1.5px solid var(--accent-primary); background:none; color:var(--accent-primary); border-radius:20px; padding:10px 18px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Ajouter</button>
+                </div>
             </div>
 
             <h2 class="section-title" style="margin-bottom: 10px;">Dépenses</h2>
@@ -1857,8 +1909,8 @@
             </div>
             <div class="input-group">
                 <label>Payé par</label>
-                <input type="text" id="bud-payeur" list="bud-payeur-list" placeholder="Ex: Toi, ta copine, ou vos prénoms">
-                <datalist id="bud-payeur-list"></datalist>
+                <div id="bud-payeurs-picker" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+                <p id="bud-payeurs-hint" style="display:none; font-size:0.78rem; color:var(--text-muted); margin-top:6px;">Ajoute des prénoms dans le bloc « Qui participe aux dépenses ? » du Budget pour pouvoir les sélectionner ici.</p>
             </div>
             <div class="input-group">
                 <label>Moyen de paiement</label>
@@ -2283,6 +2335,10 @@
             if (!appData.transports) appData.transports = [];
             if (!appData.billets) appData.billets = [];
             if (!appData.checklistsJour) appData.checklistsJour = {};
+            if (!appData.budgetPeople) appData.budgetPeople = [];
+            appData.budget.forEach(exp => {
+                if (!exp.payeurs) exp.payeurs = exp.payeur ? [exp.payeur] : [];
+            });
         }
         window.ensureDataShape = ensureDataShape;
         ensureDataShape();
@@ -3499,16 +3555,20 @@
 
             appData.budget.forEach(exp => {
                 const eqJpy = Math.round(exp.eur * TAUX_CHANGE);
+                const payeurs = exp.payeurs || [];
                 totalEur += exp.eur;
                 if (exp.paid) {
                     paidEur += exp.eur;
-                    if (exp.payeur) paidByPerson[exp.payeur] = (paidByPerson[exp.payeur] || 0) + exp.eur;
+                    if (payeurs.length) {
+                        const part = exp.eur / payeurs.length;
+                        payeurs.forEach(name => { paidByPerson[name] = (paidByPerson[name] || 0) + part; });
+                    }
                 }
                 const cat = exp.categorie || 'Autre';
                 const icon = budgetCategoryIcons[cat] || budgetCategoryIcons['Autre'];
                 const methodeIcon = exp.methode === 'Carte bleue' ? '💳' : (exp.methode === 'Espèces' ? '💴' : '');
-                const payeurHtml = exp.payeur
-                    ? `<span class="expense-payeur-pill">${methodeIcon ? methodeIcon + ' ' : ''}${esc(exp.payeur)}${exp.methode ? ' · ' + esc(exp.methode) : ''}</span>`
+                const payeurHtml = payeurs.length
+                    ? `<span class="expense-payeur-pill">${methodeIcon ? methodeIcon + ' ' : ''}${esc(payeurs.join(' + '))}${exp.methode ? ' · ' + esc(exp.methode) : ''}</span>`
                     : '';
                 list.innerHTML += `
                     <div class="expense-card">
@@ -3534,12 +3594,65 @@
             document.getElementById('budget-total-paid').innerText = paidEur.toFixed(2) + ' €';
             document.getElementById('budget-total-remaining').innerText = (totalEur - paidEur).toFixed(2) + ' €';
             renderBudgetSplit(paidByPerson);
+            renderBudgetPeopleManageList();
+            renderBudgetPeoplePicker();
+        }
 
-            const payeurList = document.getElementById('bud-payeur-list');
-            payeurList.innerHTML = Object.keys(paidByPerson)
-                .concat(appData.budget.map(e => e.payeur).filter(Boolean))
-                .filter((v, i, arr) => v && arr.indexOf(v) === i)
-                .map(name => `<option value="${esc(name)}"></option>`).join('');
+        // --- GESTION DES PRÉNOMS (pour attribuer/répartir les dépenses) ---
+        function renderBudgetPeopleManageList() {
+            const container = document.getElementById('budget-people-list');
+            if (!container) return;
+            if (appData.budgetPeople.length === 0) {
+                container.innerHTML = `<p style="font-size:0.82rem; color:var(--text-muted); margin:0;">Aucun prénom pour l'instant — ajoute-en un ci-dessous.</p>`;
+                return;
+            }
+            container.innerHTML = appData.budgetPeople.map((name, i) => `
+                <span class="people-chip">
+                    ${esc(name)}
+                    <button type="button" onclick="removeBudgetPersonAt(${i})">✕</button>
+                </span>
+            `).join('');
+        }
+
+        function addBudgetPerson() {
+            const input = document.getElementById('budget-people-input');
+            const name = input.value.trim();
+            if (!name || appData.budgetPeople.includes(name)) { input.value = ''; return; }
+            appData.budgetPeople.push(name);
+            input.value = '';
+            saveToLocalStorage();
+            updateBudgetUI();
+        }
+
+        function removeBudgetPersonAt(index) {
+            const name = appData.budgetPeople[index];
+            appData.budgetPeople.splice(index, 1);
+            appData.budget.forEach(exp => {
+                if (exp.payeurs) exp.payeurs = exp.payeurs.filter(n => n !== name);
+            });
+            selectedPayeurs = selectedPayeurs.filter(n => n !== name);
+            saveToLocalStorage();
+            updateBudgetUI();
+        }
+
+        // --- SÉLECTEUR MULTIPLE "PAYÉ PAR" DANS LE FORMULAIRE DE DÉPENSE ---
+        let selectedPayeurs = [];
+
+        function renderBudgetPeoplePicker() {
+            const picker = document.getElementById('bud-payeurs-picker');
+            const hint = document.getElementById('bud-payeurs-hint');
+            if (!picker) return;
+            hint.style.display = appData.budgetPeople.length === 0 ? 'block' : 'none';
+            picker.innerHTML = appData.budgetPeople.map((name, i) => `
+                <button type="button" class="payeur-toggle-chip ${selectedPayeurs.includes(name) ? 'selected' : ''}" onclick="toggleBudPayeurAt(${i})">${esc(name)}</button>
+            `).join('');
+        }
+
+        function toggleBudPayeurAt(index) {
+            const name = appData.budgetPeople[index];
+            const i = selectedPayeurs.indexOf(name);
+            if (i === -1) selectedPayeurs.push(name); else selectedPayeurs.splice(i, 1);
+            renderBudgetPeoplePicker();
         }
 
         // Répartition des dépenses déjà payées entre les personnes, pour
@@ -3621,7 +3734,8 @@
             document.getElementById('bud-name').value = '';
             document.getElementById('bud-amount').value = '';
             document.getElementById('bud-cat').value = 'Autre';
-            document.getElementById('bud-payeur').value = '';
+            selectedPayeurs = [];
+            renderBudgetPeoplePicker();
             document.getElementById('bud-methode').value = '';
             document.getElementById('bud-paid').checked = false;
             openModal('modal-budget');
@@ -3635,7 +3749,8 @@
             document.getElementById('bud-name').value = exp.nom || '';
             document.getElementById('bud-amount').value = exp.eur;
             document.getElementById('bud-cat').value = exp.categorie || 'Autre';
-            document.getElementById('bud-payeur').value = exp.payeur || '';
+            selectedPayeurs = (exp.payeurs || []).slice();
+            renderBudgetPeoplePicker();
             document.getElementById('bud-methode').value = exp.methode || '';
             document.getElementById('bud-paid').checked = !!exp.paid;
             openModal('modal-budget');
@@ -3654,7 +3769,7 @@
             const nom = document.getElementById('bud-name').value.trim();
             const amount = parseFloat(document.getElementById('bud-amount').value);
             const categorie = document.getElementById('bud-cat').value;
-            const payeur = document.getElementById('bud-payeur').value.trim();
+            const payeurs = selectedPayeurs.slice();
             const methode = document.getElementById('bud-methode').value;
             const paid = document.getElementById('bud-paid').checked;
             if (!nom || isNaN(amount)) return;
@@ -3665,12 +3780,12 @@
                     exp.nom = nom;
                     exp.eur = amount;
                     exp.categorie = categorie;
-                    exp.payeur = payeur;
+                    exp.payeurs = payeurs;
                     exp.methode = methode;
                     exp.paid = paid;
                 }
             } else {
-                appData.budget.push({ id: Date.now(), nom: nom, eur: amount, categorie: categorie, payeur: payeur, methode: methode, paid: paid });
+                appData.budget.push({ id: Date.now(), nom: nom, eur: amount, categorie: categorie, payeurs: payeurs, methode: methode, paid: paid });
             }
             saveToLocalStorage();
             updateBudgetUI();
