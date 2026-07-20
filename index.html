@@ -1488,6 +1488,15 @@
             <h3 id="vol-modal-title">Modifier le vol</h3>
             <input type="hidden" id="vol-edit-index" value="">
 
+            <div class="input-group" style="background: var(--bg-secondary, #f7f7f7); border-radius: 14px; padding: 12px; margin-bottom: 5px;">
+                <label>Coller le texte de la confirmation de vol (email) — optionnel</label>
+                <textarea id="vol-paste-text" rows="4" placeholder="Colle ici le texte de ton email de confirmation, puis clique sur « Analyser »..."></textarea>
+                <button type="button" class="details-link" style="margin-top: 8px; border: 1.5px solid var(--accent-primary); border-radius: 20px; padding: 6px 16px; background: none; cursor: pointer;" onclick="parseVolPasteText()">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Analyser et pré-remplir
+                </button>
+                <div id="vol-paste-feedback" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;"></div>
+            </div>
+
             <div class="input-group">
                 <label>Type de vol</label>
                 <input type="text" id="vol-type" placeholder="Ex: Aller, Retour, Vol interne">
@@ -2549,14 +2558,17 @@
             ['vol-type', 'vol-compagnie', 'vol-date', 'vol-dep', 'vol-dep-city', 'vol-dep-terminal', 'vol-dep-time',
              'vol-num-1', 'vol-layover-code', 'vol-layover-duration', 'vol-layover-arr-time', 'vol-layover-dep-time',
              'vol-arr', 'vol-arr-city', 'vol-arr-terminal',
-             'vol-arr-time', 'vol-num-2', 'vol-aircraft', 'vol-seats', 'vol-pnr', 'vol-ticket-link'
+             'vol-arr-time', 'vol-num-2', 'vol-aircraft', 'vol-seats', 'vol-pnr', 'vol-ticket-link', 'vol-paste-text'
             ].forEach(id => { document.getElementById(id).value = ''; });
+            document.getElementById('vol-paste-feedback').textContent = '';
             openModal('modal-vol');
         }
 
         function openEditVolModal(index) {
             const vol = appData.vols[index];
             if (vol) {
+                document.getElementById('vol-paste-text').value = '';
+                document.getElementById('vol-paste-feedback').textContent = '';
                 document.getElementById('vol-modal-title').innerText = "Modifier le vol";
                 document.getElementById('vol-edit-index').value = index;
                 document.getElementById('vol-type').value = vol.type || '';
@@ -2630,6 +2642,173 @@
             saveToLocalStorage();
             renderVols();
             closeModal('modal-vol');
+        }
+
+        // --- ANALYSE AUTOMATIQUE D'UN EMAIL DE CONFIRMATION DE VOL ---
+        // Best-effort : extrait ce qu'elle reconnaît (aéroports, horaires,
+        // numéros de vol, terminaux, avion, escale, PNR, sièges) à partir du
+        // texte collé, et pré-remplit le formulaire. Ne devine jamais un champ
+        // qu'elle ne trouve pas — l'utilisateur reste maître de la relecture.
+        const FLIGHT_PASTE_MONTHS = {
+            jan: 0, janv: 0, january: 0, janvier: 0,
+            feb: 1, fev: 1, fevr: 1, february: 1, fevrier: 1,
+            mar: 2, mars: 2, march: 2,
+            apr: 3, avr: 3, april: 3, avril: 3,
+            may: 4, mai: 4,
+            jun: 5, juin: 5, june: 5,
+            jul: 6, juil: 6, july: 6, juillet: 6,
+            aug: 7, aout: 7, august: 7,
+            sep: 8, sept: 8, september: 8, septembre: 8,
+            oct: 9, october: 9, octobre: 9,
+            nov: 10, november: 10, novembre: 10,
+            dec: 11, dece: 11, december: 11, decembre: 11
+        };
+        const FLIGHT_PASTE_MONTH_DISPLAY = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+        const FLIGHT_PASTE_AIRLINES = ['Qatar Airways', 'Air France', 'ANA', 'JAL', 'Japan Airlines', 'Emirates', 'Turkish Airlines', 'Lufthansa', 'KLM', 'Singapore Airlines', 'Cathay Pacific', 'British Airways'];
+
+        function dedupeKeepOrder(arr) {
+            return arr.filter((v, i) => arr.indexOf(v) === i);
+        }
+
+        function parseFlightPasteDates(text) {
+            const found = [];
+            const patterns = [
+                /\b(\d{1,2})\s+([A-Za-zÀ-ÿ]{3,12})\.?\s+(\d{4})\b/g,
+                /\b(\d{4})-(\d{2})-(\d{2})\b/g,
+                /\b(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})\b/g
+            ];
+            let m;
+            while ((m = patterns[0].exec(text))) {
+                const monthKey = stripAccents(m[2].toLowerCase());
+                const monthIdx = FLIGHT_PASTE_MONTHS[monthKey];
+                if (monthIdx !== undefined) found.push({ day: parseInt(m[1], 10), month: monthIdx });
+            }
+            while ((m = patterns[1].exec(text))) {
+                found.push({ day: parseInt(m[3], 10), month: parseInt(m[2], 10) - 1 });
+            }
+            while ((m = patterns[2].exec(text))) {
+                const month = parseInt(m[2], 10) - 1;
+                if (month >= 0 && month <= 11) found.push({ day: parseInt(m[1], 10), month });
+            }
+            return found;
+        }
+
+        function parseVolPasteText() {
+            const text = document.getElementById('vol-paste-text').value;
+            const feedback = document.getElementById('vol-paste-feedback');
+            if (!text.trim()) {
+                feedback.textContent = "Colle d'abord le texte de ta confirmation de vol ci-dessus.";
+                return;
+            }
+
+            const setIfFound = (id, value) => {
+                if (value) document.getElementById(id).value = value;
+            };
+            const found = [];
+            const missing = [];
+
+            // Compagnie
+            const airline = FLIGHT_PASTE_AIRLINES.find(a => text.toLowerCase().includes(a.toLowerCase()));
+            if (airline) { setIfFound('vol-compagnie', airline); found.push('compagnie'); }
+
+            // Numéros de vol (ex: QR040, QR 813)
+            const flightNumbers = dedupeKeepOrder(
+                [...text.matchAll(/\b([A-Z]{2})\s?(\d{2,4})\b/g)].map(m => m[1] + m[2])
+            );
+            if (flightNumbers[0]) { setIfFound('vol-num-1', flightNumbers[0]); found.push('n° de vol 1'); } else { missing.push('numéros de vol'); }
+
+            // Aéroports : "Ville (XXX)" — l'ordre d'apparition donne dép → escale → arrivée
+            const airportMatches = [...text.matchAll(/([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ.\-'\s]{1,35}?)\s*\(([A-Z]{3})\)/g)];
+            const seenCodes = [];
+            const cityByCode = {};
+            airportMatches.forEach(m => {
+                const city = m[1].trim().replace(/\s{2,}/g, ' ');
+                const code = m[2];
+                if (!seenCodes.includes(code)) { seenCodes.push(code); cityByCode[code] = city; }
+            });
+            const hasLayover = seenCodes.length >= 3;
+            if (seenCodes.length >= 2) {
+                setIfFound('vol-dep', seenCodes[0]);
+                setIfFound('vol-dep-city', cityByCode[seenCodes[0]]);
+                const arrCode = seenCodes[seenCodes.length - 1];
+                setIfFound('vol-arr', arrCode);
+                setIfFound('vol-arr-city', cityByCode[arrCode]);
+                found.push('aéroports');
+                if (hasLayover) {
+                    setIfFound('vol-layover-code', seenCodes[1]);
+                    if (flightNumbers[1]) setIfFound('vol-num-2', flightNumbers[1]);
+                }
+            } else {
+                missing.push('aéroports (codes à 3 lettres)');
+            }
+
+            // Horaires (HH:MM), dans l'ordre d'apparition dans le texte
+            const times = [...text.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g)].map(m => `${m[1].padStart(2, '0')}:${m[2]}`);
+            if (times.length) {
+                setIfFound('vol-dep-time', times[0]);
+                if (hasLayover && times.length >= 4) {
+                    setIfFound('vol-layover-arr-time', times[1]);
+                    setIfFound('vol-layover-dep-time', times[2]);
+                    setIfFound('vol-arr-time', times[3]);
+                } else if (hasLayover && times.length === 3) {
+                    setIfFound('vol-layover-arr-time', times[1]);
+                    setIfFound('vol-arr-time', times[2]);
+                } else if (times.length >= 2) {
+                    setIfFound('vol-arr-time', times[times.length - 1]);
+                }
+                found.push('horaires');
+            } else {
+                missing.push('horaires');
+            }
+
+            // Terminaux (pas de dédoublonnage : "Terminal 1" peut désigner deux
+            // terminaux différents selon l'aéroport, dédoublonner fausserait l'ordre)
+            const terminals = [...text.matchAll(/Terminal\s*([A-Za-z0-9]{1,3})/gi)].map(m => `Terminal ${m[1]}`);
+            if (terminals.length) {
+                setIfFound('vol-dep-terminal', terminals[0]);
+                if (terminals.length >= 2) setIfFound('vol-arr-terminal', terminals[terminals.length - 1]);
+                found.push('terminaux');
+            } else {
+                missing.push('terminaux');
+            }
+
+            // Avion
+            const aircraftMatches = dedupeKeepOrder(
+                [...text.matchAll(/(Airbus\s*A\d{3}(?:-\d{2,3}[A-Z]{0,3})?|Boeing\s*7\d{2}(?:-\d{2,3}[A-Z]{0,3})?|Embraer\s*E?\d{3}|ATR\s*\d{2,3})/gi)].map(m => m[0].trim())
+            );
+            if (aircraftMatches.length) { setIfFound('vol-aircraft', aircraftMatches.join(' & ')); found.push('avion'); } else { missing.push('type d\'avion'); }
+
+            // Durée d'escale (proche du mot "escale"/"layover"/"connection")
+            const layoverDurationMatch = text.match(/(?:escale|layover|connect(?:ing|ion))[^\d]{0,20}(\d{1,2}\s?h(?:\s?\d{1,2}\s?m?)?)/i);
+            if (hasLayover && layoverDurationMatch) { setIfFound('vol-layover-duration', layoverDurationMatch[1].replace(/\s+/g, ' ')); found.push('durée escale'); } else if (hasLayover) { missing.push('durée escale'); }
+
+            // PNR / référence de réservation
+            const pnrMatch = text.match(/(?:PNR|Booking reference|R[ée]f[ée]rence(?:\s+de\s+r[ée]servation)?|Confirmation number|Record locator)[^A-Za-z0-9]{0,5}([A-Z0-9]{5,8})\b/i);
+            if (pnrMatch) { setIfFound('vol-pnr', pnrMatch[1]); found.push('PNR'); } else { missing.push('PNR'); }
+
+            // Sièges
+            const seatsMatch = text.match(/(?:Si[eè]ges?|Seats?)\s*[:\-]?\s*([0-9]{1,3}[A-Za-z](?:\s*,\s*[0-9]{1,3}[A-Za-z])*)/i);
+            if (seatsMatch) { setIfFound('vol-seats', seatsMatch[1]); found.push('sièges'); } else { missing.push('sièges'); }
+
+            // Date générale + suffixe (+1j) si l'arrivée est un autre jour que le départ
+            const dates = parseFlightPasteDates(text);
+            if (dates.length) {
+                const d0 = dates[0];
+                document.getElementById('vol-date').value = `${d0.day} ${FLIGHT_PASTE_MONTH_DISPLAY[d0.month]}`;
+                found.push('date');
+                const dLast = dates[dates.length - 1];
+                if (dLast && (dLast.day !== d0.day || dLast.month !== d0.month)) {
+                    const arrTimeInput = document.getElementById('vol-arr-time');
+                    if (arrTimeInput.value && !arrTimeInput.value.includes('+1j')) {
+                        arrTimeInput.value += ' (+1j)';
+                    }
+                }
+            } else {
+                missing.push('date');
+            }
+
+            feedback.innerHTML = `✅ Trouvé automatiquement : ${found.length ? esc(found.join(', ')) : 'rien'}.` +
+                (missing.length ? `<br>⚠️ À vérifier/compléter à la main : ${esc(missing.join(', '))}.` : '<br>Relis quand même les champs avant d\'enregistrer.');
         }
 
         function deleteVol(index) {
