@@ -883,6 +883,15 @@
             color: white;
         }
 
+        .expense-payeur-pill {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .btn-add-float {
             position: fixed;
             bottom: 105px;
@@ -1365,12 +1374,8 @@
                 <button class="key" onclick="pressKey('delete')"><i class="fa-solid fa-delete-left"></i></button>
             </div>
 
-            <h2 class="section-title" style="margin-bottom: 10px;">Dépenses prévues</h2>
+            <h2 class="section-title" style="margin-bottom: 10px;">Dépenses</h2>
             <div class="budget-summary-row">
-                <div class="budget-stat">
-                    <div class="budget-stat-value" id="budget-total-planned">0 €</div>
-                    <div class="budget-stat-label">Prévu</div>
-                </div>
                 <div class="budget-stat">
                     <div class="budget-stat-value" id="budget-total-paid">0 €</div>
                     <div class="budget-stat-label">Payé</div>
@@ -1380,6 +1385,8 @@
                     <div class="budget-stat-label">Restant</div>
                 </div>
             </div>
+
+            <div id="budget-split-card"></div>
 
             <div id="expenses-list"></div>
         </div>
@@ -1846,6 +1853,19 @@
                     <option value="Nourriture">🍜 Nourriture</option>
                     <option value="Shopping">🛍️ Shopping</option>
                     <option value="Autre">✨ Autre</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Payé par</label>
+                <input type="text" id="bud-payeur" list="bud-payeur-list" placeholder="Ex: Toi, ta copine, ou vos prénoms">
+                <datalist id="bud-payeur-list"></datalist>
+            </div>
+            <div class="input-group">
+                <label>Moyen de paiement</label>
+                <select id="bud-methode">
+                    <option value="">-- Non précisé --</option>
+                    <option value="Carte bleue">💳 Carte bleue</option>
+                    <option value="Espèces">💴 Espèces</option>
                 </select>
             </div>
             <div class="input-group" style="display:flex; align-items:center; gap:10px; margin-bottom:0;">
@@ -3475,13 +3495,21 @@
             const list = document.getElementById('expenses-list');
             list.innerHTML = '';
             let totalEur = 0, paidEur = 0;
+            const paidByPerson = {};
 
             appData.budget.forEach(exp => {
                 const eqJpy = Math.round(exp.eur * TAUX_CHANGE);
                 totalEur += exp.eur;
-                if (exp.paid) paidEur += exp.eur;
+                if (exp.paid) {
+                    paidEur += exp.eur;
+                    if (exp.payeur) paidByPerson[exp.payeur] = (paidByPerson[exp.payeur] || 0) + exp.eur;
+                }
                 const cat = exp.categorie || 'Autre';
                 const icon = budgetCategoryIcons[cat] || budgetCategoryIcons['Autre'];
+                const methodeIcon = exp.methode === 'Carte bleue' ? '💳' : (exp.methode === 'Espèces' ? '💴' : '');
+                const payeurHtml = exp.payeur
+                    ? `<span class="expense-payeur-pill">${methodeIcon ? methodeIcon + ' ' : ''}${esc(exp.payeur)}${exp.methode ? ' · ' + esc(exp.methode) : ''}</span>`
+                    : '';
                 list.innerHTML += `
                     <div class="expense-card">
                         <button class="delete-btn" onclick="deleteItem('budget', ${exp.id})" style="top: 16px; right: 15px;"><i class="fa-solid fa-xmark"></i></button>
@@ -3496,15 +3524,63 @@
                         </div>
                         <div class="expense-card-footer">
                             <button class="expense-paid-pill ${exp.paid ? 'paid' : ''}" onclick="toggleBudgetPaid(${exp.id})">${exp.paid ? '✓ Payé' : 'À payer'}</button>
+                            ${payeurHtml}
                             <button onclick="openEditBudgetModal(${exp.id})" style="background:none; border:none; color:#bbb; cursor:pointer; font-size:0.95rem;"><i class="fa-solid fa-pen-to-square"></i></button>
                         </div>
                     </div>
                 `;
             });
 
-            document.getElementById('budget-total-planned').innerText = totalEur.toFixed(2) + ' €';
             document.getElementById('budget-total-paid').innerText = paidEur.toFixed(2) + ' €';
             document.getElementById('budget-total-remaining').innerText = (totalEur - paidEur).toFixed(2) + ' €';
+            renderBudgetSplit(paidByPerson);
+
+            const payeurList = document.getElementById('bud-payeur-list');
+            payeurList.innerHTML = Object.keys(paidByPerson)
+                .concat(appData.budget.map(e => e.payeur).filter(Boolean))
+                .filter((v, i, arr) => v && arr.indexOf(v) === i)
+                .map(name => `<option value="${esc(name)}"></option>`).join('');
+        }
+
+        // Répartition des dépenses déjà payées entre les personnes, pour
+        // savoir qui doit rembourser quoi à qui (utile pour un couple/groupe).
+        function renderBudgetSplit(paidByPerson) {
+            const card = document.getElementById('budget-split-card');
+            const names = Object.keys(paidByPerson);
+            if (names.length === 0) {
+                card.innerHTML = '';
+                return;
+            }
+
+            const rowsHtml = names.map(name =>
+                `<div style="display:flex; justify-content:space-between; font-size:0.88rem; padding:4px 0;">
+                    <span>${esc(name)}</span>
+                    <span style="font-weight:700;">${paidByPerson[name].toFixed(2)} €</span>
+                </div>`
+            ).join('');
+
+            let balanceHtml = '';
+            if (names.length === 2) {
+                const [a, b] = names;
+                const diff = paidByPerson[a] - paidByPerson[b];
+                if (Math.abs(diff) > 0.009) {
+                    const debtor = diff > 0 ? b : a;
+                    const creditor = diff > 0 ? a : b;
+                    balanceHtml = `<div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.08); font-size:0.85rem; font-weight:700; color: var(--accent-primary);">
+                        ${esc(debtor)} doit rembourser ${(Math.abs(diff) / 2).toFixed(2)} € à ${esc(creditor)}
+                    </div>`;
+                } else {
+                    balanceHtml = `<div style="margin-top:8px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.08); font-size:0.85rem; font-weight:700; color: var(--accent-primary);">Comptes équilibrés 👌</div>`;
+                }
+            }
+
+            card.innerHTML = `
+                <div class="card" style="padding:14px 16px; margin-bottom:16px;">
+                    <div class="section-title" style="margin-bottom:6px;">Répartition</div>
+                    ${rowsHtml}
+                    ${balanceHtml}
+                </div>
+            `;
         }
 
         function formatNumberString(str) {
@@ -3545,6 +3621,8 @@
             document.getElementById('bud-name').value = '';
             document.getElementById('bud-amount').value = '';
             document.getElementById('bud-cat').value = 'Autre';
+            document.getElementById('bud-payeur').value = '';
+            document.getElementById('bud-methode').value = '';
             document.getElementById('bud-paid').checked = false;
             openModal('modal-budget');
         }
@@ -3557,6 +3635,8 @@
             document.getElementById('bud-name').value = exp.nom || '';
             document.getElementById('bud-amount').value = exp.eur;
             document.getElementById('bud-cat').value = exp.categorie || 'Autre';
+            document.getElementById('bud-payeur').value = exp.payeur || '';
+            document.getElementById('bud-methode').value = exp.methode || '';
             document.getElementById('bud-paid').checked = !!exp.paid;
             openModal('modal-budget');
         }
@@ -3574,6 +3654,8 @@
             const nom = document.getElementById('bud-name').value.trim();
             const amount = parseFloat(document.getElementById('bud-amount').value);
             const categorie = document.getElementById('bud-cat').value;
+            const payeur = document.getElementById('bud-payeur').value.trim();
+            const methode = document.getElementById('bud-methode').value;
             const paid = document.getElementById('bud-paid').checked;
             if (!nom || isNaN(amount)) return;
 
@@ -3583,10 +3665,12 @@
                     exp.nom = nom;
                     exp.eur = amount;
                     exp.categorie = categorie;
+                    exp.payeur = payeur;
+                    exp.methode = methode;
                     exp.paid = paid;
                 }
             } else {
-                appData.budget.push({ id: Date.now(), nom: nom, eur: amount, categorie: categorie, paid: paid });
+                appData.budget.push({ id: Date.now(), nom: nom, eur: amount, categorie: categorie, payeur: payeur, methode: methode, paid: paid });
             }
             saveToLocalStorage();
             updateBudgetUI();
