@@ -1029,7 +1029,7 @@
             flex-shrink: 0;
         }
         .activity-link-btn:hover {
-            background: #1a6b3c;
+            filter: brightness(0.88);
         }
         .checklist-selector-bar {
             display: flex;
@@ -1468,7 +1468,7 @@
         <div class="modal-content">
             <h3>Qu'est-ce que tu veux ajouter ?</h3>
             <div class="modal-buttons" style="flex-direction: column; gap: 12px;">
-                <button class="btn-modal save" style="background-color: var(--accent-primary); display:flex; align-items:center; justify-content:center; gap:10px;" onclick="closeModal('modal-choose-info-type'); openModal('modal-infos');">
+                <button class="btn-modal save" style="background-color: var(--accent-primary); display:flex; align-items:center; justify-content:center; gap:10px;" onclick="closeModal('modal-choose-info-type'); openAddInfoModal();">
                     <i class="fa-solid fa-circle-info"></i> Une info
                 </button>
                 <button class="btn-modal save" style="background-color: var(--accent-primary); display:flex; align-items:center; justify-content:center; gap:10px;" onclick="closeModal('modal-choose-info-type'); openAddBilletModal();">
@@ -1678,7 +1678,8 @@
     <!-- Modal Infos -->
     <div class="modal" id="modal-infos">
         <div class="modal-content">
-            <h3>Ajouter une info utile</h3>
+            <h3 id="info-modal-title">Ajouter une info utile</h3>
+            <input type="hidden" id="info-edit-id" value="">
             <div class="input-group">
                 <label>Type d'information (Titre)</label>
                 <input type="text" id="info-title" placeholder="Ex: JR Pass ou Adresses hôtels">
@@ -2798,13 +2799,7 @@
             if (item) {
                 item.checked = !item.checked;
                 saveToLocalStorage();
-                // Refresh the view modal if open
-                const editId = document.getElementById('prog-edit-id').value;
-                if (editId && parseInt(editId) === progId) {
-                    // re-render the mini checklist in the modal
-                    const detailProg = appData.programme.find(p => p.id === progId);
-                    if (detailProg) renderJourChecklistInModal(progId, detailProg);
-                }
+                if (currentChecklistScope === progId) renderChecklist();
             }
         }
 
@@ -2813,53 +2808,8 @@
             if (confirm("Voulez-vous vraiment supprimer cet élément ?")) {
                 appData.checklistsJour[progId] = appData.checklistsJour[progId].filter(i => i.id !== itemId);
                 saveToLocalStorage();
-                const editId = document.getElementById('prog-edit-id').value;
-                if (editId && parseInt(editId) === progId) {
-                    const detailProg = appData.programme.find(p => p.id === progId);
-                    if (detailProg) renderJourChecklistInModal(progId, detailProg);
-                }
+                if (currentChecklistScope === progId) renderChecklist();
             }
-        }
-
-        function renderJourChecklistInModal(progId, prog) {
-            const container = document.getElementById('jour-checklist-container');
-            if (!container) return;
-            if (!appData.checklistsJour) appData.checklistsJour = {};
-            if (!appData.checklistsJour[progId]) appData.checklistsJour[progId] = [];
-            const items = appData.checklistsJour[progId];
-
-            let html = '';
-            items.forEach(item => {
-                html += `
-                    <div class="jour-checklist-item ${item.checked ? 'checked' : ''}">
-                        <input type="checkbox" class="checkbox-round" ${item.checked ? 'checked' : ''} onclick="toggleCheckJour(${progId}, ${item.id})">
-                        <span class="checklist-label" style="flex:1;">${esc(item.texte)}</span>
-                        <button class="delete-btn" onclick="deleteItemJour(${progId}, ${item.id})" style="top:18px; right:15px; position:relative;"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                `;
-            });
-            html += `
-                <div class="jour-checklist-add-row">
-                    <input type="text" id="jour-check-new-text" placeholder="Ajouter un élément...">
-                    <button onclick="addJourCheckItem(${progId})">+</button>
-                </div>
-            `;
-            container.innerHTML = html;
-        }
-
-        function addJourCheckItem(progId) {
-            const texte = document.getElementById('jour-check-new-text').value.trim();
-            if (!texte) return;
-            if (!appData.checklistsJour[progId]) appData.checklistsJour[progId] = [];
-            appData.checklistsJour[progId].push({
-                id: Date.now(),
-                texte: texte,
-                checked: false
-            });
-            document.getElementById('jour-check-new-text').value = '';
-            saveToLocalStorage();
-            const detailProg = appData.programme.find(p => p.id === progId);
-            if (detailProg) renderJourChecklistInModal(progId, detailProg);
         }
 
         // --- BUDGET ---
@@ -2982,12 +2932,35 @@
                             </div>
                         </div>
                         <div style="font-size: 0.95rem; line-height: 1.5; color: #444; white-space: pre-line; font-weight: 500;">${esc(info.desc)}</div>
+                        <div style="text-align:right; margin-top: 10px;">
+                            <button onclick="openEditInfoModal(${info.id})" class="details-link" style="border: 1.5px solid var(--accent-primary); border-radius: 20px; padding: 6px 16px;">
+                                <i class="fa-solid fa-pen-to-square"></i> Modifier
+                            </button>
+                        </div>
                     </div>
                 `;
             });
 
             populateHotelMapSelect();
             populateItineraryMapSelect();
+        }
+
+        function openAddInfoModal() {
+            document.getElementById('info-modal-title').innerText = "Ajouter une info utile";
+            document.getElementById('info-edit-id').value = '';
+            document.getElementById('info-title').value = '';
+            document.getElementById('info-desc').value = '';
+            openModal('modal-infos');
+        }
+
+        function openEditInfoModal(id) {
+            const info = appData.infos.find(i => i.id === id);
+            if (!info) return;
+            document.getElementById('info-modal-title').innerText = "Modifier l'info";
+            document.getElementById('info-edit-id').value = info.id;
+            document.getElementById('info-title').value = info.titre || '';
+            document.getElementById('info-desc').value = info.desc || '';
+            openModal('modal-infos');
         }
 
         // --- CARTE & ADRESSES (sans clé API — iframe Google Maps publique) ---
@@ -3297,14 +3270,24 @@
         }
 
         function saveInfo() {
+            const editId = document.getElementById('info-edit-id').value;
             const titre = document.getElementById('info-title').value.trim();
             const desc = document.getElementById('info-desc').value.trim();
             if (!titre) return;
 
-            appData.infos.push({ id: Date.now(), titre: titre, desc: desc });
+            if (editId) {
+                const info = appData.infos.find(i => i.id === parseInt(editId));
+                if (info) {
+                    info.titre = titre;
+                    info.desc = desc;
+                }
+            } else {
+                appData.infos.push({ id: Date.now(), titre: titre, desc: desc });
+            }
             saveToLocalStorage();
             renderInfos();
 
+            document.getElementById('info-edit-id').value = '';
             document.getElementById('info-title').value = '';
             document.getElementById('info-desc').value = '';
             closeModal('modal-infos');
