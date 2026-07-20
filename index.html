@@ -935,6 +935,57 @@
             color: white;
         }
 
+        /* --- Verrouillage des modifications (protégé par mot de passe) ---
+           Purement visuel : la vraie protection est côté serveur (règles
+           Firestore). Ce CSS cache les actions de modification tant que
+           .is-editor n'est pas posé sur <body> après un déverrouillage réussi. */
+        .btn-lock-float {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0, 0, 0, 0.55);
+            color: white;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 500;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        body.is-editor .btn-lock-float {
+            background: var(--accent-primary);
+        }
+
+        body:not(.is-editor) .btn-add-float,
+        body:not(.is-editor) .delete-btn,
+        body:not(.is-editor) .delete-btn-round,
+        body:not(.is-editor) button:has(.fa-pen-to-square),
+        body:not(.is-editor) .people-chip button,
+        body:not(.is-editor) #budget-people-add-row,
+        body:not(.is-editor) button[onclick*="addInlineDayActivite"],
+        body:not(.is-editor) button[onclick*="addDayToDestination"],
+        body:not(.is-editor) button[onclick*="addJourCheckItemGlobal"],
+        body:not(.is-editor) button[onclick*="deleteDay("],
+        body:not(.is-editor) button[onclick*="deleteDayActivite"] {
+            display: none !important;
+        }
+
+        body:not(.is-editor) .checkbox-round,
+        body:not(.is-editor) .expense-paid-pill,
+        body:not(.is-editor) .trip-title-container {
+            pointer-events: none;
+        }
+
+        body:not(.is-editor) .trip-title-container i.fa-pen-to-square {
+            display: none;
+        }
+
         .btn-add-float {
             position: fixed;
             bottom: 105px;
@@ -1319,6 +1370,27 @@
 </head>
 <body>
 
+    <button class="btn-lock-float" id="lock-toggle-btn" onclick="onLockButtonClick()" title="Modifications verrouillées">
+        <i class="fa-solid fa-lock" id="lock-toggle-icon"></i>
+    </button>
+
+    <!-- ================= MODAL DÉVERROUILLAGE DES MODIFICATIONS ================= -->
+    <div class="modal" id="modal-unlock">
+        <div class="modal-content">
+            <h3>Déverrouiller les modifications</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-top:-8px; margin-bottom:15px;">Entre le code pour pouvoir ajouter/modifier des éléments sur ce site.</p>
+            <div class="input-group">
+                <label>Code</label>
+                <input type="password" id="unlock-password" inputmode="numeric" placeholder="••••••••" onkeydown="if(event.key==='Enter'){event.preventDefault(); submitUnlock();}">
+            </div>
+            <p id="unlock-error" style="display:none; color:#c0392b; font-size:0.82rem; margin-top:-8px;">Code incorrect.</p>
+            <div class="modal-buttons">
+                <button class="btn-modal cancel" onclick="closeModal('modal-unlock')">Annuler</button>
+                <button class="btn-modal save" onclick="submitUnlock()">Déverrouiller</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= ACCUEIL ================= -->
     <div id="page-accueil" class="page active">
         <!-- Pétales de sakura décoratifs, uniquement sur l'accueil — ne bloquent aucun clic -->
@@ -1420,7 +1492,7 @@
             <div class="card" style="padding:14px 16px; margin-bottom:16px;">
                 <div class="section-title" style="margin-bottom:8px;">Qui participe aux dépenses ?</div>
                 <div id="budget-people-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
-                <div style="display:flex; gap:8px; align-items:center;">
+                <div id="budget-people-add-row" style="display:flex; gap:8px; align-items:center;">
                     <input type="text" id="budget-people-input" placeholder="Ajouter un prénom..." style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #ddd; font-size:0.95rem;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBudgetPerson();}">
                     <button type="button" onclick="addBudgetPerson()" style="border:1.5px solid var(--accent-primary); background:none; color:var(--accent-primary); border-radius:20px; padding:10px 18px; font-weight:700; cursor:pointer; white-space:nowrap;">+ Ajouter</button>
                 </div>
@@ -2343,6 +2415,55 @@
         window.ensureDataShape = ensureDataShape;
         ensureDataShape();
 
+        // --- VERROUILLAGE DES MODIFICATIONS (protégé par mot de passe) ---
+        // window.isEditor ne devient true qu'après une connexion Firebase réussie
+        // avec le compte "éditeur" (voir le script de synchronisation Firebase en
+        // bas de page) : la vraie vérification se fait côté serveur (règles
+        // Firestore), ce garde-fou côté client n'est là que pour éviter une
+        // modification "fantôme" qui semblerait fonctionner puis disparaîtrait.
+        window.isEditor = false;
+
+        function requireEditor() {
+            if (window.isEditor) return true;
+            openModal('modal-unlock');
+            return false;
+        }
+
+        function updateLockButtonUI() {
+            const icon = document.getElementById('lock-toggle-icon');
+            const btn = document.getElementById('lock-toggle-btn');
+            if (!icon || !btn) return;
+            icon.className = window.isEditor ? 'fa-solid fa-lock-open' : 'fa-solid fa-lock';
+            btn.title = window.isEditor ? 'Modifications déverrouillées (cliquer pour reverrouiller)' : 'Modifications verrouillées (cliquer pour déverrouiller)';
+        }
+        window.updateLockButtonUI = updateLockButtonUI;
+
+        function onLockButtonClick() {
+            if (window.isEditor) {
+                if (confirm("Reverrouiller les modifications sur cet appareil ?") && window.lockEditing) {
+                    window.lockEditing();
+                }
+            } else {
+                document.getElementById('unlock-error').style.display = 'none';
+                document.getElementById('unlock-password').value = '';
+                openModal('modal-unlock');
+            }
+        }
+
+        async function submitUnlock() {
+            const password = document.getElementById('unlock-password').value;
+            const errorEl = document.getElementById('unlock-error');
+            errorEl.style.display = 'none';
+            if (!password) return;
+            const ok = window.unlockEditing ? await window.unlockEditing(password) : false;
+            if (ok) {
+                document.getElementById('unlock-password').value = '';
+                closeModal('modal-unlock');
+            } else {
+                errorEl.style.display = 'block';
+            }
+        }
+
         // Migre l'ancien format (une entrée par jour) vers le nouveau format
         // (une entrée par ville avec une plage de dates), en regroupant les
         // anciennes entrées par ville et en conservant leurs activités et
@@ -2459,6 +2580,7 @@
         }
 
         function saveTripDates() {
+            if (!requireEditor()) return;
             const title = document.getElementById('edit-trip-title').value;
             const start = document.getElementById('edit-trip-start').value;
             const end = document.getElementById('edit-trip-end').value;
@@ -2524,6 +2646,7 @@
         }
 
         function saveChecklist() {
+            if (!requireEditor()) return;
             const scope = document.getElementById('check-scope').value;
             const texte = document.getElementById('check-text').value.trim();
             if (!texte) return;
@@ -2678,6 +2801,7 @@
         }
 
         function saveVol() {
+            if (!requireEditor()) return;
             const index = document.getElementById('vol-edit-index').value;
             const volData = {
                 type: document.getElementById('vol-type').value,
@@ -2888,6 +3012,7 @@
         }
 
         function deleteVol(index) {
+            if (!requireEditor()) return;
             if (confirm("Voulez-vous vraiment supprimer ce vol ?")) {
                 appData.vols.splice(index, 1);
                 saveToLocalStorage();
@@ -3074,6 +3199,7 @@
         }
 
         function saveTransport() {
+            if (!requireEditor()) return;
             const editIndex = document.getElementById('transport-edit-id').value;
             const type = document.getElementById('transport-type').value;
             const train = document.getElementById('transport-nom').value.trim();
@@ -3104,6 +3230,7 @@
         }
 
         function deleteTransport(index) {
+            if (!requireEditor()) return;
             if (confirm("Voulez-vous vraiment supprimer ce trajet ?")) {
                 appData.transports.splice(index, 1);
                 saveToLocalStorage();
@@ -3149,6 +3276,7 @@
         }
 
         function addDayToDestination(progId) {
+            if (!requireEditor()) return;
             const input = document.getElementById('new-day-date-' + progId);
             if (!input) return;
             const date = input.value.trim();
@@ -3166,6 +3294,7 @@
         }
 
         function deleteDay(progId, date) {
+            if (!requireEditor()) return;
             if (!confirm(`Supprimer la journée du ${date} et ses activités ?`)) return;
             const prog = appData.programme.find(p => p.id === progId);
             if (!prog) return;
@@ -3185,6 +3314,7 @@
         }
 
         function addInlineDayActivite(progId, date) {
+            if (!requireEditor()) return;
             const idSuffix = progId + '_' + safeId(date);
             const heure = document.getElementById('inline-act-heure-' + idSuffix).value.trim();
             const texte = document.getElementById('inline-act-texte-' + idSuffix).value.trim();
@@ -3199,6 +3329,7 @@
         }
 
         function deleteDayActivite(progId, date, activiteId) {
+            if (!requireEditor()) return;
             const prog = appData.programme.find(p => p.id === progId);
             if (!prog) return;
             prog.activites = (prog.activites || []).filter(a => a.id !== activiteId);
@@ -3219,6 +3350,7 @@
         }
 
         function saveEditActivite(progId, activiteId) {
+            if (!requireEditor()) return;
             const heure = document.getElementById('edit-act-heure-' + activiteId).value.trim();
             const texte = document.getElementById('edit-act-texte-' + activiteId).value.trim();
             const lien = document.getElementById('edit-act-lien-' + activiteId).value.trim();
@@ -3460,6 +3592,7 @@
         }
 
         function addJourCheckItemGlobal(progId) {
+            if (!requireEditor()) return;
             const input = document.getElementById('jour-checklist-add-input');
             if (!input) return;
             const texte = input.value.trim();
@@ -3494,6 +3627,7 @@
         }
 
         function toggleCheck(id) {
+            if (!requireEditor()) { renderChecklist(); return; }
             const item = appData.checklist.find(i => i.id === id);
             if (item) {
                 item.checked = !item.checked;
@@ -3503,6 +3637,7 @@
         }
 
         function toggleCheckJour(progId, itemId) {
+            if (!requireEditor()) { if (currentChecklistScope === progId) renderChecklist(); return; }
             if (!appData.checklistsJour[progId]) return;
             const items = appData.checklistsJour[progId];
             const item = items.find(i => i.id === itemId);
@@ -3514,6 +3649,7 @@
         }
 
         function deleteItemJour(progId, itemId) {
+            if (!requireEditor()) return;
             if (!appData.checklistsJour[progId]) return;
             if (confirm("Voulez-vous vraiment supprimer cet élément ?")) {
                 appData.checklistsJour[progId] = appData.checklistsJour[progId].filter(i => i.id !== itemId);
@@ -3615,6 +3751,7 @@
         }
 
         function addBudgetPerson() {
+            if (!requireEditor()) return;
             const input = document.getElementById('budget-people-input');
             const name = input.value.trim();
             if (!name || appData.budgetPeople.includes(name)) { input.value = ''; return; }
@@ -3625,6 +3762,7 @@
         }
 
         function removeBudgetPersonAt(index) {
+            if (!requireEditor()) return;
             const name = appData.budgetPeople[index];
             appData.budgetPeople.splice(index, 1);
             appData.budget.forEach(exp => {
@@ -3757,6 +3895,7 @@
         }
 
         function toggleBudgetPaid(id) {
+            if (!requireEditor()) return;
             const exp = appData.budget.find(e => e.id === id);
             if (!exp) return;
             exp.paid = !exp.paid;
@@ -3765,6 +3904,7 @@
         }
 
         function saveBudget() {
+            if (!requireEditor()) return;
             const editId = document.getElementById('bud-edit-id').value;
             const nom = document.getElementById('bud-name').value.trim();
             const amount = parseFloat(document.getElementById('bud-amount').value);
@@ -4140,6 +4280,7 @@
         }
 
         function saveBillet() {
+            if (!requireEditor()) return;
             const editId = document.getElementById('billet-edit-id').value;
             const nom = document.getElementById('billet-nom').value.trim();
             const date = document.getElementById('billet-date').value.trim();
@@ -4168,6 +4309,7 @@
         }
 
         function saveInfo() {
+            if (!requireEditor()) return;
             const editId = document.getElementById('info-edit-id').value;
             const titre = document.getElementById('info-title').value.trim();
             const desc = document.getElementById('info-desc').value.trim();
@@ -4192,6 +4334,7 @@
         }
 
         function deleteItem(category, id) {
+            if (!requireEditor()) return;
             if (confirm("Voulez-vous vraiment supprimer cet élément ?")) {
                 appData[category] = appData[category].filter(item => item.id !== id);
                 saveToLocalStorage();
@@ -4222,6 +4365,7 @@
         // ================= SAVE ACTIONS =================
 
 function saveProgramme() {
+            if (!requireEditor()) return;
             const editId = document.getElementById('prog-edit-id').value;
             const ville = document.getElementById('prog-ville').value;
             const hotel = document.getElementById('prog-hotel').value;
@@ -4287,7 +4431,13 @@ function saveProgramme() {
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        // Compte "éditeur" partagé : ce n'est qu'un identifiant technique, pas un
+        // secret — le vrai mot de passe n'existe que dans Firebase Authentication
+        // (jamais dans ce fichier), et les règles Firestore sont ce qui bloque
+        // réellement l'écriture pour qui ne le connaît pas.
+        const EDITOR_EMAIL = "editeur@voyage-japon.app";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBm8xMiTMBN1oI9Bc8ZyKBGeoWOcVnZ_yk",
@@ -4327,7 +4477,15 @@ function saveProgramme() {
         // Authentification anonyme : chaque appareil obtient une identité technique
         // sans mot de passe, requise par les règles Firestore (request.auth != null)
         // pour empêcher n'importe qui sur Internet de lire/écrire vos données.
+        // Un utilisateur connecté avec le compte "éditeur" (email/mot de passe)
+        // n'est PAS anonyme : c'est ce que vérifient les règles Firestore pour
+        // autoriser l'écriture, et ce que ce code utilise pour afficher les
+        // boutons de modification (window.isEditor).
         onAuthStateChanged(auth, (user) => {
+            window.isEditor = !!(user && user.isAnonymous === false);
+            document.body.classList.toggle('is-editor', window.isEditor);
+            if (window.updateLockButtonUI) window.updateLockButtonUI();
+
             if (user && pendingCloudData) {
                 window.saveToCloud(pendingCloudData);
                 pendingCloudData = null;
@@ -4336,6 +4494,33 @@ function saveProgramme() {
         signInAnonymously(auth).catch((e) => {
             console.error("Erreur d'authentification Firebase :", e);
         });
+
+        // Appelé par le formulaire de déverrouillage : tente de se connecter avec
+        // le compte éditeur. Si le mot de passe est bon, Firebase remplace la
+        // session anonyme par une session "éditeur" (onAuthStateChanged ci-dessus
+        // s'en aperçoit et débloque l'interface). Si le mot de passe est faux,
+        // rien ne change et la fonction renvoie false pour afficher une erreur.
+        window.unlockEditing = async function (password) {
+            try {
+                await signInWithEmailAndPassword(auth, EDITOR_EMAIL, password);
+                return true;
+            } catch (e) {
+                console.error("Échec du déverrouillage :", e.code || e);
+                return false;
+            }
+        };
+
+        // Reverrouille l'appareil : revient à une session anonyme (lecture seule).
+        window.lockEditing = async function () {
+            try {
+                await signOut(auth);
+            } catch (e) {
+                console.error("Erreur lors du reverrouillage :", e);
+            }
+            signInAnonymously(auth).catch((e) => {
+                console.error("Erreur d'authentification Firebase :", e);
+            });
+        };
 
         // Écoute en direct : dès que ta copine modifie quelque chose, ça se met à jour chez toi automatiquement
         onSnapshot(tripDocRef, (snap) => {
