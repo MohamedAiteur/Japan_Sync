@@ -2093,12 +2093,39 @@
             badge.style.display = '';
         }
 
+        // Position GPS de l'appareil (préférée) : plus fiable que de deviner via
+        // le nom de la ville dans Programme. Repli sur la destination du
+        // Programme si la géolocalisation est refusée/indisponible.
+        function getDeviceLocation() {
+            return new Promise(resolve => {
+                if (!navigator.geolocation) { resolve(null); return; }
+                // Filet de sécurité : certains navigateurs/contextes ne déclenchent
+                // jamais le callback d'erreur (permission jamais accordée ni
+                // refusée), donc l'option "timeout" native ne suffit pas toujours.
+                let settled = false;
+                const done = (value) => { if (!settled) { settled = true; resolve(value); } };
+                setTimeout(() => done(null), 5000);
+                navigator.geolocation.getCurrentPosition(
+                    pos => done([
+                        Math.round(pos.coords.latitude * 100) / 100,
+                        Math.round(pos.coords.longitude * 100) / 100
+                    ]),
+                    () => done(null),
+                    { timeout: 5000, maximumAge: 15 * 60 * 1000 }
+                );
+            });
+        }
+
         async function fetchAndShowWeather() {
             const badge = document.getElementById('today-card-weather');
             if (!badge) return;
-            const dest = getCurrentOrNextDestination();
-            const coords = dest ? findCityCoords(dest.ville) : null;
+            let coords = await getDeviceLocation();
+            if (!coords) {
+                const dest = getCurrentOrNextDestination();
+                coords = dest ? findCityCoords(dest.ville) : null;
+            }
             if (!coords) return;
+            if (!document.body.contains(badge)) return;
 
             const cacheKey = coords.join(',');
             if (cacheKey in weatherCache) {
